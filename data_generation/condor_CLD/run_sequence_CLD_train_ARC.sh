@@ -65,9 +65,9 @@ ddsim --compactFile $K4GEO/FCCee/CLD/compact/CLD_o3_v01/CLD_o3_v01.xml  --output
 
 
 # running both gen tracking and CT tracking
-k4run CLDReconstruction.py -n ${NEV}  --inputFiles out_sim_edm4hep.root --outputBasename out_reco_edm4hep 
+k4run CLDReconstruction.py -n ${NEV}  --inputFiles out_sim_edm4hep.root --outputBasename out_reco_edm4hep  --genTracking
 
-k4run CLDReconstruction.py -n ${NEV}  --inputFiles out_sim_edm4hep_ARC.root --outputBasename out_reco_edm4hep_ARC  
+k4run CLDReconstruction.py -n ${NEV}  --inputFiles out_sim_edm4hep_ARC.root --outputBasename out_reco_edm4hep_ARC  --genTracking
 
 wrapperfunction() {
     source /cvmfs/sft.cern.ch/lcg/views/LCG_108/x86_64-el9-gcc15-opt/setup.sh
@@ -76,9 +76,8 @@ wrapperfunction
 
 if [ ! -f "out_reco_edm4hep_REC.parquet" ]; then
     cp -r ${HOMEDIR}/data_generation/preprocessing/ .
-    python  -m preprocessing.dataset_creation --input  out_reco_edm4hep_ARC_REC.edm4hep.root  --outpath .   --dataset
-
-    python  -m preprocessing.dataset_creation --input  out_reco_edm4hep_REC.edm4hep.root  --outpath .   --dataset
+    python  -m preprocessing.dataset_creation --input  out_reco_edm4hep_ARC_REC.edm4hep.root  --outpath .   --dataset --truth
+    python  -m preprocessing.dataset_creation --input  out_reco_edm4hep_REC.edm4hep.root  --outpath .   --dataset  --truth
 fi
 
 mkdir -p ${OUTPUTDIR}

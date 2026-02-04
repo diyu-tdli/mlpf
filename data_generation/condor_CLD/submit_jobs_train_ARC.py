@@ -94,9 +94,9 @@ def main():
 
     # find list of already produced files:
     list_of_outfiles = []
-    for name in glob.glob("{}/arc/*.parquet".format(outdir)):
+    for name in glob.glob("{}/05/*.parquet".format(outdir)):
         list_of_outfiles.append(name)
-
+    print(list_of_outfiles)
     script = "run_sequence_CLD_train_ARC.sh"
 
     jobCount = 0
@@ -116,12 +116,12 @@ log                   = std/condor.$(ClusterId).log
     )
 
     print(njobs)
-    for job in range(njobs):
-        if (job>  10100):
+    for job in range(njobs+1):
+        if (job>  0):
             seed = str(job + 1)
-            basename = "arc/pf_tree_" + seed + "_arc.parquet" 
+            basename = "05/pf_tree_" + seed + ".parquet" 
             outputFile = outdir + "/" + basename
-
+            print(outputFile)
             # print outdir, basename, outputFile
             if not outputFile in list_of_outfiles:
                 print("{} : missing output file ".format(outputFile))
