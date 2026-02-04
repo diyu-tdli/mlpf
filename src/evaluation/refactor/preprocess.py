@@ -86,8 +86,9 @@ def preprocess_dataframe(sd_hgb, sd_pandora, names=""):
     if "no_correct_reco_photons" in names:
         print("Leaving photons predicted energies as they are")
     elif "reco_correct_gt_photons" in names:
-        sd_hgb.loc[sd_hgb.pid == 22, "calibrated_E"] = sd_hgb.loc[
-            sd_hgb.pid == 22, "reco_showers_E"]
+        mask = (sd_hgb.pid == 22)
+        sd_hgb.loc[mask, "calibrated_E"] = sd_hgb.loc[
+            mask, "reco_showers_E"]
     else:
         sd_hgb.loc[sd_hgb.pred_pid_matched == 3, "calibrated_E"] = sd_hgb.loc[
             sd_hgb.pred_pid_matched == 3, "pred_showers_E"] # Correct photons

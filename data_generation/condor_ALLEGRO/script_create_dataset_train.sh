@@ -7,8 +7,12 @@ if ! command -v python &> /dev/null; then
     source /cvmfs/sw-nightlies.hsf.org/key4hep/setup.sh
 fi
 
-# gun
-python submit_jobs.py --mode train --config config_spread_211125.gun --outdir /eos/experiment/fcc/users/g/gmarchio/ALLEGRO_o1_v03/mlpf/train/gun_dr_logE_211125/  --condordir /eos/experiment/fcc/users/g/gmarchio/ALLEGRO_o1_v03/mlpf/condor/gun_dr_logE_211125/  --njobs 300 --nev 1000 --queue workday
+# # gun
+# python submit_jobs.py --mode train --config config_spread_211125.gun --outdir /eos/experiment/fcc/users/g/gmarchio/ALLEGRO_o1_v03/mlpf/train/gun_dr_logE_211125/  --condordir /eos/experiment/fcc/users/g/gmarchio/ALLEGRO_o1_v03/mlpf/condor/gun_dr_logE_211125/  --njobs 300 --nev 1000 --queue workday
+
+
+python submit_jobs.py --mode train --config p8_ee_Zuds_ecm91 --outdir /eos/experiment/fcc/users/m/mgarciam/mlpf/CLD/train/Z_uds_allegro/  --condordir /eos/experiment/fcc/users/m/mgarciam/mlpf/condor/Z_uds_allegro  --njobs 2 --nev 1000 --queue workday
+
 # --queue tomorrow
 
 # python submit_jobs.py --mode train --config config_spread_211125.gun --outdir /eos/experiment/fcc/users/g/gmarchio/ALLEGRO_o1_v03/mlpf/train/gun_dr_logE_211125_test/  --condordir /eos/experiment/fcc/users/g/gmarchio/ALLEGRO_o1_v03/mlpf/condor/gun_dr_logE_211125_test/  --njobs 2 --nev 1000 --queue workday

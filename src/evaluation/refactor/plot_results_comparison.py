@@ -70,12 +70,12 @@ PATH_store_summary_plots = os.path.join(PATH_store, "summary_plots")
 if not os.path.exists(PATH_store_summary_plots):
     os.makedirs(PATH_store_summary_plots)
 
-path_ML_gt = "showers_df_evaluation/0_0_None_hdbscan.pt"
-path_pandora = "showers_df_evaluation/0_0_None_pandora.pt"
+path_ML_gt = "showers_df_evaluation/0_0_Nonetest.pt"
+path_pandora = "showers_df_evaluation/0_0_None_pandora_test.pt"
 
 
-path_ML = "showers_df_evaluation/0_0_None_hdbscan_delta_MC02.pt"
-path_pandora = "showers_df_evaluation/0_0_None_pandora.pt"
+path_ML = "showers_df_evaluation/0_0_Nonetest.pt"
+path_pandora = "showers_df_evaluation/0_0_None_pandora_test.pt"
 
 
 dir_top = args.path
@@ -99,9 +99,9 @@ if not os.path.exists(current_dir):
 if not os.path.exists(current_dir_detailed):
     os.makedirs(current_dir_detailed)
 plot_mass(sd_hgb, sd_hgb_gt, sd_pandora, PATH_store)
-analyze_fakes(sd_pandora, sd_hgb, PATH_store_individual_plots)
-plot_mass(sd_hgb, sd_hgb_betas_corr, sd_pandora, PATH_store_individual_plots, label_ML_GTC=r"ML no low $\beta$",
-          filename="mass_comparison_betas.pdf", color_ML_GTC="#249413")
+# analyze_fakes(sd_pandora, sd_hgb, PATH_store_individual_plots)
+# plot_mass(sd_hgb, sd_hgb_betas_corr, sd_pandora, PATH_store_individual_plots, label_ML_GTC=r"ML no low $\beta$",
+#           filename="mass_comparison_betas.pdf", color_ML_GTC="#249413")
 
 SMALL_SIZE = 15
 MEDIUM_SIZE = 15
@@ -119,25 +119,26 @@ fig_eff, ax_eff = plt.subplots(4, 4, figsize=(14, 14))
 # fig_eff.tight_layout()
 # fig_eff.savefig(os.path.join(PATH_store_summary_plots, "overview_Efficiency_FakeRate.pdf"))
 # plot_cm_per_energy(sd_hgb, sd_pandora, PATH_store_summary_plots, PATH_store_individual_plots, sd_hgb_gt=sd_hgb_gt)
-plot_per_energy_resolution2_multiple(
-    sd_pandora,
-    {"ML": sd_hgb, "ML GTC": sd_hgb_gt},
-    current_dir,
-    tracks=True,
-    perfect_pid=False,
-    mass_zero=False,
-    ML_pid=True,
-    PATH_store_detailed_plots=current_dir_detailed
-)
+
+# plot_per_energy_resolution2_multiple(
+#     sd_pandora,
+#     {"ML": sd_hgb, "ML GTC": sd_hgb_gt},
+#     current_dir,
+#     tracks=True,
+#     perfect_pid=False,
+#     mass_zero=False,
+#     ML_pid=True,
+#     PATH_store_detailed_plots=current_dir_detailed
+# )
 
 
-e_ranges = [[0, 5], [5, 15], [15, 50]]
-current_dir = PATH_store_individual_plots
-current_dir_detailed = PATH_store_summary_plots
+# e_ranges = [[0, 5], [5, 15], [15, 50]]
+# current_dir = PATH_store_individual_plots
+# current_dir_detailed = PATH_store_summary_plots
 
-if not os.path.exists(current_dir):
-    os.makedirs(current_dir)
-if not os.path.exists(current_dir_detailed):
-    os.makedirs(current_dir_detailed)
-print("Done plotting")
+# if not os.path.exists(current_dir):
+#     os.makedirs(current_dir)
+# if not os.path.exists(current_dir_detailed):
+#     os.makedirs(current_dir_detailed)
+# print("Done plotting")
 

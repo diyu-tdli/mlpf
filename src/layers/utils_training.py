@@ -18,7 +18,7 @@ class FreezeClustering(BaseFinetuning):
         # self._unfreeze_at_epoch = unfreeze_at_epoch
 
     def freeze_before_training(self, pl_module):
-        print("freezing the following module:", pl_module)
+        # print("freezing the following module:", pl_module)
         # freeze any module you want
         # Here, we are freezing `feature_extractor`
 
@@ -163,7 +163,7 @@ def obtain_clustering_for_matched_showers(
                     ][mask]
                 g.ndata["chi_squared_tracks"] = graphs[i].ndata["chi_squared_tracks"][mask]
                 energy_t = dic["part_true"].E.to(model_output.device)
-                energy_t_corr_daughters = dic["part_true"].E_corrected.to(
+                energy_t_corr_daughters = dic["part_true"].m.to(
                     model_output.device
                 )
                 true_energy_shower = energy_t[row_ind_[j]]

@@ -8,101 +8,6 @@ from scipy import asarray as ar, exp
 from src.utils.pid_conversion import our_to_pandora_mapping, pandora_to_our_mapping
 import pandas as pd
 
-def calculate_eff(sd, log_scale=False, pandora=False):
-    if log_scale:
-        bins = np.exp(np.arange(np.log(0.1), np.log(80), 0.3))
-    else:
-        bins = [0, 5, 10, 35, 50]
-    eff = []
-    energy_eff = []
-    errors = []
-    for i in range(len(bins) - 1):
-        bin_i = bins[i]
-        bin_i1 = bins[i + 1]
-        mask_above = sd.reco_showers_E.values <= bin_i1
-        mask_below = sd.reco_showers_E.values > bin_i
-        mask = mask_below * mask_above
-        number_of_non_reconstructed_showers = np.sum(
-            np.isnan(sd.pred_showers_E.values)[mask]
-        )
-        total_showers = len(sd.true_showers_E.values[mask])
-        if pandora:
-            number_of_non_reconstructed_showers = np.sum(
-                np.isnan(sd.pandora_calibrated_E.values)[mask]
-            )
-            total_showers = len(sd.pandora_calibrated_E.values[mask])
-        if total_showers > 0:
-            eff.append(
-                (total_showers - number_of_non_reconstructed_showers) / total_showers
-            )
-            energy_eff.append((bin_i1 + bin_i) / 2)
-            n_total = total_showers
-            n_r = total_showers-number_of_non_reconstructed_showers
-            error = (n_r/(n_total**2)*np.sqrt(n_total))**2+(1/n_total*np.sqrt(n_r))**2
-            error = np.sqrt(error)
-            errors.append(error)
-    return eff, energy_eff, errors
-
-
-def calculate_fakes(sd, matched, log_scale=False, pandora=False, id=None):
-    if log_scale:
-        bins_fakes = np.exp(np.arange(np.log(0.1), np.log(80), 0.3))
-    else:
-        bins_fakes = [0, 5, 15, 35, 50]
-    fake_rate = []
-    energy_fakes = []
-    fake_percent_energy = []
-    fake_percent_reco_energy = []
-    id_our = pandora_to_our_mapping[id]
-    fake_errors = []
-    for i in range(len(bins_fakes) - 1):
-        bin_i = bins_fakes[i]
-        bin_i1 = bins_fakes[i + 1]
-        if pandora:
-            mask_above = sd.pred_showers_E.values <= bin_i1
-            mask_below = sd.pred_showers_E.values > bin_i
-            mask_pid = sd.pandora_pid.isin(our_to_pandora_mapping[id_our])
-            mask_pid_truth = mask_above * mask_below * sd.pid.isin(our_to_pandora_mapping[id_our]) # The matched ones
-            mask = mask_below * mask_above * mask_pid
-            fakes = np.sum(np.isnan(sd.pid)[mask])
-            non_fakes_mask = ~np.isnan(sd.pid)[mask]
-            fakes_mask = np.isnan(sd.pid)[mask]
-            energy_in_fakes = np.sum(sd.pandora_calibrated_pfo[mask].values[fakes_mask])
-            reco_in_fakes = np.sum(sd.pred_showers_E[mask].values[fakes_mask])
-            total_E_meas = np.sum(sd.pandora_calibrated_pfo.values[mask])
-            total_E_reco = np.sum(sd.pred_showers_E.values[mask])
-            total_showers = len(sd.pred_showers_E.values[mask]) # The true showers
-        else:
-            mask_above = sd.pred_showers_E.values <= bin_i1
-            mask_below = sd.pred_showers_E.values > bin_i
-            mask_pid = sd.pred_pid_matched == id_our
-            mask_pid_truth = sd.pid.isin(our_to_pandora_mapping[id_our]) # The matched ones!
-            mask = mask_below * mask_above * mask_pid
-            fakes = np.sum(np.isnan(sd.pid)[mask])
-            total_showers_true = len(sd.pred_showers_E.values[mask_pid_truth])
-            total_showers = sum(~np.isnan(sd.pred_showers_E.values[mask]))
-            fakes_mask = np.isnan(sd.pid)[mask]
-            energy_in_fakes = np.sum(sd.calibrated_E[mask].values[fakes_mask])
-            reco_in_fakes = np.sum(sd.pred_showers_E[mask].values[fakes_mask])
-
-            #non_fakes_mask = ~np.isnan(sd.pid)[mask]
-            total_E_meas = np.sum(sd.calibrated_E.values[mask])
-            total_E_reco = np.sum(sd.pred_showers_E.values[mask])
-        if total_showers > 0:
-            # print(fakes, np.mean(sd.pred_energy_hits_raw[mask]))
-            fake_rate.append(fakes / total_showers)
-            n_r = fakes
-            n_total = total_showers
-            error = (n_r/(n_total**2)*np.sqrt(n_total))**2+(1/n_total*np.sqrt(n_r))**2
-            error = np.sqrt(error)
-            print(fakes, n_total, pandora, error)
-            fake_errors.append(error)
-            energy_fakes.append((bin_i1 + bin_i) / 2)
-            fake_percent_energy.append(energy_in_fakes / total_E_meas)
-            fake_percent_reco_energy.append(reco_in_fakes / total_E_reco)
-    return fake_rate, energy_fakes, fake_percent_energy, fake_percent_reco_energy, fake_errors 
-
-
 def calculate_response(matched, pandora, log_scale=False):
     if log_scale:
         bins = np.exp(np.arange(np.log(0.1), np.log(80), 0.3))
@@ -254,6 +159,7 @@ def obtain_MPV_and_68(data_for_hist, bins_per_binned_E, epsilon=0.01, no_divide=
     ind_max_hist = np.argmax(hist)
     MPV = (bin_edges[ind_max_hist] + bin_edges[ind_max_hist + 1]) / 2
     std68, low, high = get_std68(hist, bin_edges, epsilon=epsilon)
+    
     if std68 == 0.4 and low == 0.2 and high == 1.0:
         # It didn't fit correctly as it's too close to a delta function
         if type(data_for_hist) == pd.Series:

@@ -689,6 +689,12 @@ parser.add_argument(
     help="using allegro",
 )
 parser.add_argument(
+    "--ILD",
+    default=False,
+    action="store_true",
+    help="using ILD detector",
+)
+parser.add_argument(
     "--train-batches",
     default=100,
     type=int,
@@ -699,4 +705,10 @@ parser.add_argument(
     default=False,
     action="store_true",
     help="using truth tracking from gen",
+)
+parser.add_argument(
+    "--pandora",
+    default=False,
+    action="store_true",
+    help="using pandora information",
 )

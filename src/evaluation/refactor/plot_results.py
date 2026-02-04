@@ -74,13 +74,19 @@ if not os.path.exists(PATH_store_summary_plots):
 
 dir_top = args.path
 
-sd_hgb1, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/test_save_dpc0_0_None.pt"), False, False)
-sd_hgb = sd_hgb1 #concat_with_batch_fix([sd_hgb1, sd_hgb2, sd_hgb3])
+sd_hgb1, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_130126_fullEPID_pest_p_timespred_lowEcor0_0_None.pt"), False, False)
+# sd_hgb2, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_v1_accumv6v4_401_6000_0_None.pt"), False, False)
+# sd_hgb3, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_v1_accumv6v4_601_8000_0_None.pt"), False, False)
+# sd_hgb4, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_v1_accumv6v4_801_11000_0_None.pt"), False, False)
+sd_hgb = sd_hgb1 #concat_with_batch_fix([sd_hgb1, sd_hgb2, sd_hgb3,sd_hgb4 ])
 
-sd_pandora1, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/test_save_dpc0_0_None_pandora.pt"), False, False)
-sd_pandora = sd_pandora1 #concat_with_batch_fix([sd_pandora1, sd_pandora2, sd_pandora3])
+sd_pandora1, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_130126_fullEPID_pest_p_timespred_lowEcor0_0_None_pandora.pt"), False, False)
+# sd_pandora2, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_v1_accumv6v4_401_6000_0_None_pandora.pt"), False, False)
+# sd_pandora3, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_v1_accumv6v4_601_8000_0_None_pandora.pt"), False, False)
+# sd_pandora4, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_v1_accumv6v4_801_11000_0_None_pandora.pt"), False, False)
+sd_pandora = sd_pandora1 #concat_with_batch_fix([sd_pandora1, sd_pandora2, sd_pandora3, sd_pandora4])
 
-sd_hgb_gt1, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/test_gun_um1000_0_None.pt"), False, False)
+sd_hgb_gt1, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_v1_accumv7_10_0_None.pt"), False, False)
 sd_hgb_gt = sd_hgb_gt1 #concat_with_batch_fix([sd_hgb_gt1, sd_hgb_gt2, sd_hgb_gt3])
 
 sd_hgb, sd_pandora = preprocess_dataframe(sd_hgb, sd_pandora, args.preprocess.split(","))

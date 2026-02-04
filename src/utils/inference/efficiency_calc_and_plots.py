@@ -11,16 +11,16 @@ def create_eff_dic_pandora(matched_pandora, id):
     mask_id_true = matched_pandora.pid.isin(id_group)
     matched_pandora_id = matched_pandora[mask_id_true]
     # calculate eff without pid (pure clustering)
-    eff_p, energy_eff_p, errors_p = calculate_eff(matched_pandora_id, False, pandora=True )
+    eff_p, energy_eff_p, errors_p = calculate_eff(matched_pandora_id, log_scale=True, pandora=True )
     
     #calculate efficiency taking into account pid 
     pandora_pid_mask = ~(matched_pandora_id.pandora_pid.isin(id_group))
     matched_pandora_id.loc[pandora_pid_mask,"pandora_calibrated_E"]=np.nan
-    eff_p_pid, energy_eff_p, errors_p_pid = calculate_eff(matched_pandora_id, False, pandora=True )
-    eff_p_pid_status1, energy_eff_status1_p, errors_p_pid_status1 = calculate_eff(matched_pandora_id[matched_pandora_id.gen_status==1], False, pandora=True )
-    eff_p_pid_track, energy_eff_track_p, errors_p_pid_track = calculate_eff(matched_pandora_id[matched_pandora_id.is_track_in_MC==1], False, pandora=True )
+    eff_p_pid, energy_eff_p, errors_p_pid = calculate_eff(matched_pandora_id, log_scale=True, pandora=True )
+    eff_p_pid_status1, energy_eff_status1_p, errors_p_pid_status1 = calculate_eff(matched_pandora_id[matched_pandora_id.gen_status==1], log_scale=True, pandora=True )
+    eff_p_pid_track, energy_eff_track_p, errors_p_pid_track = calculate_eff(matched_pandora_id[matched_pandora_id.is_track_in_MC==1], log_scale=True, pandora=True )
     
-    fakes_p, energy_fakes_p, fake_percent_energy, fake_percent_reco, fake_errors = calculate_fakes(matched_pandora, None, False, pandora=True, id=id)
+    fakes_p, energy_fakes_p, fake_percent_energy, fake_percent_reco, fake_errors = calculate_fakes(matched_pandora, None, log_scale=True, pandora=True, id=id)
     photons_dic = {}
     photons_dic["eff_p"] = eff_p
     photons_dic["eff_p_pid"] = eff_p_pid
@@ -50,13 +50,13 @@ def create_eff_dic(photons_dic, matched_, id, var_i, calc_fakes=True):
     mask_id_gt = matched_.pid.isin(id_group)
     matched_id = matched_[mask_id_gt]
     # calculate eff without pid (pure clustering)
-    eff, energy_eff, errors = calculate_eff(matched_id, False)
+    eff, energy_eff, errors = calculate_eff(matched_id, log_scale=True)
   
     #calculate efficiency taking into account pid 
     matched_id.loc[matched_id.pred_pid_matched!=our_id,"pred_showers_E"]=np.nan
-    eff_pid, energy_eff, errors_pid = calculate_eff(matched_id, False)
-    eff_pid_status1, energy_eff_status1, errors_pid_status1 = calculate_eff(matched_id[matched_id.gen_status==1], False)
-    eff_pid_track, energy_eff_track, errors_pid_track = calculate_eff(matched_id[matched_id.is_track_in_MC==1], False)
+    eff_pid, energy_eff, errors_pid = calculate_eff(matched_id, log_scale=True)
+    eff_pid_status1, energy_eff_status1, errors_pid_status1 = calculate_eff(matched_id[matched_id.gen_status==1], log_scale=True)
+    eff_pid_track, energy_eff_track, errors_pid_track = calculate_eff(matched_id[matched_id.is_track_in_MC==1], log_scale=True)
     photons_dic["eff_pid_" + str(var_i)] = eff_pid
     photons_dic["eff_status1_" + str(var_i)] = eff_pid_status1
     photons_dic["eff_track_" + str(var_i)] = eff_pid_track
@@ -70,7 +70,7 @@ def create_eff_dic(photons_dic, matched_, id, var_i, calc_fakes=True):
     photons_dic["energy_eff_track_" + str(var_i)] = energy_eff_track
 
     if calc_fakes:
-        fakes, energy_fakes, fake_percent_energy, fake_percent_reco, fake_errors = calculate_fakes(matched_, None, False, pandora=False, id=id)
+        fakes, energy_fakes, fake_percent_energy, fake_percent_reco, fake_errors = calculate_fakes(matched_, None, log_scale=True, pandora=False, id=id)
         photons_dic["fakes_" + str(var_i)] = fakes
         photons_dic["fakes_errors" + str(var_i)] = fake_errors
         photons_dic["energy_fakes_" + str(var_i)] = energy_fakes

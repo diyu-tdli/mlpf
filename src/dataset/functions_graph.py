@@ -63,6 +63,7 @@ def create_graph(
         g.ndata["pos_hits_xyz"] = hits.pos_xyz_hits.float()
         g.ndata["pos_pxpypz_at_vertex"] = hits.pos_pxpypz.float()
         g.ndata["pos_pxpypz"] = hits.pos_pxpypz  #TrackState::AtIP
+        g.ndata["pos_pxpypz_at_calo"] = hits.pos_pxpypz_calo  #TrackState::AtCalorimeter
         g = calculate_distance_to_boundary(g)
         g.ndata["hit_type"] = hits.hit_type_feature.float()
         g.ndata["e_hits"] = hits.e_hits.float()  

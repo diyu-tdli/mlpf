@@ -18,7 +18,7 @@ mkdir -p ${DIR}
 mkdir -p ${DIR}/${SEED}
 cd ${DIR}/${SEED}
 pwd
-SAMPLE="gun" 
+SAMPLE="Zcard" 
 
 cp -r $HOMEDIR/data_generation/preprocessing/ .
 

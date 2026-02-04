@@ -2,7 +2,10 @@
 import torch 
 import torch.nn as nn
 import numpy as np 
-
+import random
+import string
+import os
+import pickle
 
 
 
@@ -95,9 +98,9 @@ def obtain_PID_neutral(dic,pid_true_matched,pids_neutral, args, pid_conversion_d
     
 
 
-def save_features_func(args, graph_level_features, e_true, e_cor,e_sum_hits, e_true_corr_daughters, part_coords_matched, pid_true_matched):
+def save_features_func(args, graph_level_features, e_true, pid_true_matched, name=""):
     cluster_features_path = os.path.join(
-        args.model_prefix, "cluster_features"
+        args.model_prefix, "cluster_features"+name
     )
     if not os.path.exists(cluster_features_path):
         os.makedirs(cluster_features_path)
@@ -107,14 +110,18 @@ def save_features_func(args, graph_level_features, e_true, e_cor,e_sum_hits, e_t
             "x": graph_level_features.detach().cpu(),
             # """ "xyz_covariance_matrix": covariances.cpu(),"""
             "e_true": e_true.detach().cpu(),
-            "e_reco": e_cor.detach().cpu(),
-            "true_e_corr": (e_true / e_sum_hits - 1).detach().cpu(),
-            "e_true_corrected_daughters": e_true_corr_daughters.detach().cpu(),
-            # "node_features_avg": scatter_mean(
-            #    batch_g.ndata["h"], batch_idx, dim=0
-            # ),  # graph-averaged node features
-            "coords_y": part_coords_matched,
+            # "e_reco": e_cor.detach().cpu(),
+            # "true_e_corr": (e_true / e_sum_hits - 1).detach().cpu(),
+
             "pid_y": pid_true_matched,
         },
     )
 
+
+
+
+randstr = lambda N: ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(N))
+
+def save_features(path, object):
+    p = os.path.join(path, randstr(10) + ".pkl")
+    pickle.dump(object, open(p, "wb"))

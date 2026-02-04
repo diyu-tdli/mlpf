@@ -94,7 +94,7 @@ def main():
 
     # find list of already produced files:
     list_of_outfiles = []
-    for name in glob.glob("{}/*.parquet".format(outdir)):
+    for name in glob.glob("{}/gen_tracking_eval_corrected_mass/*.parquet".format(outdir)):
         list_of_outfiles.append(name)
 
     script = "run_sequence_CLD_train.sh"
@@ -119,7 +119,7 @@ log                   = std/condor.$(ClusterId).log
     for job in range(njobs):
         if (job>  0):
             seed = str(job + 1)
-            basename = "pf_tree_" + seed + ".parquet"
+            basename = "gen_tracking/pf_tree_" + seed + "_gentracking.parquet" 
             outputFile = outdir + "/" + basename
 
             # print outdir, basename, outputFile

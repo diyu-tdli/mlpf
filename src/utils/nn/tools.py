@@ -99,7 +99,7 @@ def log_losses_wandb(
                 "loss" + val_ + " track": losses[19],
                 #"loss" + val_ + " beta zeros": losses[15],
 
-                "loss  score" + val_: loss_ll,
+                "loss energy correction charged": loss_ll,
                 "loss energy correction": loss_ec,
             }
         )

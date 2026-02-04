@@ -23,6 +23,7 @@ class PandoraFeatures:
 class Hits:
     pos_xyz_hits: Any
     pos_pxpypz: Any
+    pos_pxpypz_calo: Any
     p_hits: Any
     e_hits: Any
     hit_particle_link: Any
@@ -102,11 +103,14 @@ class Hits:
             p_tracks =X_track[:,5]
             pos_pxpypz_hits_tracks = X_track[:,6:9]
             pos_pxpypz = torch.cat((pos_xyz_hits_hits*0, pos_pxpypz_hits_tracks), dim=0)
+            pos_pxpypz_hits_tracks = X_track[:,22:]
+            pos_pxpypz_calo = torch.cat((pos_xyz_hits_hits*0, pos_pxpypz_hits_tracks), dim=0)
             p = torch.cat((p_hits, p_tracks), dim=0).view(-1,1)
         else:
             pos_xyz_hits = pos_xyz_hits_hits
             e = e_hits.view(-1,1)
             pos_pxpypz = pos_xyz_hits_hits*0
+            pos_pxpypz_calo = pos_pxpypz
             p = p_hits.view(-1,1)
     
         if not args.ILD:
@@ -126,6 +130,7 @@ class Hits:
         return cls(
             pos_xyz_hits=pos_xyz_hits,
             pos_pxpypz=pos_pxpypz,
+            pos_pxpypz_calo = pos_pxpypz_calo,
             p_hits=p,
             e_hits=e,
             hit_particle_link=hit_particle_link,

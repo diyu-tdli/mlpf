@@ -69,15 +69,15 @@ PATH_store_summary_plots = os.path.join(PATH_store, "summary_plots")
 if not os.path.exists(PATH_store_summary_plots):
     os.makedirs(PATH_store_summary_plots)
 
-path_ML_gt = "showers_df_evaluation/0_0_None_hdbscan.pt"
-path_pandora = "showers_df_evaluation/0_0_None_pandora.pt"
+# path_ML_gt = "showers_df_evaluation/0_0_None_hdbscan.pt"
+# path_pandora = "showers_df_evaluation/0_0_None_pandora.pt"
+
+path_ML_gt = "showers_df_evaluation/0_0_None_hdbscan_drlog_v9_03_41500_hdbscan_gun_05_130225_400_8_8_01.pt"
+path_ML = "showers_df_evaluation/0_0_None_hdbscan_drlog_v9_03_41500_hdbscan_gun_05_130225_400_8_8_01.pt"
+path_pandora = "showers_df_evaluation/0_0_None_pandora_drlog_v9_03_41500_hdbscan_gun_05_130225_400_8_8_01.pt"
 
 
-path_ML = "showers_df_evaluation/0_0_None_hdbscan_delta_MC02.pt"
-path_pandora = "showers_df_evaluation/0_0_None_pandora.pt"
-
-
-dir_top = "/eos/user/g/gkrzmanc/results/2024/test_1311_additional_features_150files_model_epoch_4_step_50000/"
+dir_top = "/eos/user/m/mgarciam/datasets_mlpf/models_trained_CLD/eval_comp_05/"
 print(PATH_store)
 path_ml = os.path.join(dir_top, path_ML)
 path_ml_gt = os.path.join(dir_top, path_ML_gt)
@@ -123,6 +123,6 @@ fig_eff, ax_eff = plt.subplots(4, 4, figsize=(14, 14))
 #     os.makedirs(current_dir)
 # if not os.path.exists(current_dir_detailed):
 #     os.makedirs(current_dir_detailed)
-plot_mass_note(sd_hgb, sd_hgb_gt, sd_pandora, PATH_store)
+# plot_mass_note(sd_hgb, sd_hgb_gt, sd_pandora, PATH_store)
 print("Done plotting")
 

@@ -6,7 +6,7 @@ from torch import Tensor
 from torch.nn import Linear
 from torch_scatter import scatter
 from torch_geometric.nn.conv import MessagePassing
-
+import torch_cmspepr
 import dgl
 
 
@@ -53,29 +53,20 @@ class GravNetConv(MessagePassing):
         self.k = k
         self.num_workers = num_workers
 
-        self.lin_s = Linear(in_channels, space_dimensions, bias=False)
-        self.lin_s.weight.data.copy_(torch.eye(space_dimensions, in_channels))
-        self.lin_h = Linear(in_channels, propagate_dimensions)
-        self.lin = Linear(in_channels + 2 * propagate_dimensions, out_channels)
-
-        # self.reset_parameters()
-
-    def reset_parameters(self):
-        self.lin_s.reset_parameters()
-        self.lin_h.reset_parameters()
-        self.lin.reset_parameters()
+        self.space_transformations = Linear(in_channels, space_dimensions, bias=False)
+        self.propagate_transformations = Linear(in_channels, propagate_dimensions)
+        self.output_transformations = torch.nn.Sequential(
+            torch.nn.Linear(in_channels + 2 * propagate_dimensions, out_channels),
+            torch.nn.ReLU()
+        )
+    
 
     def forward(self, g, x: Tensor, batch: OptTensor = None) -> Tensor:
         """"""
 
-        assert x.dim() == 2, "Static graphs not supported in `GravNetConv`."
+        h_l: Tensor = self.propagate_transformations(x)
 
-        b: OptTensor = None
-        if isinstance(batch, Tensor):
-            b = batch
-        h_l: Tensor = self.lin_h(x)
-
-        s_l: Tensor = self.lin_s(x)
+        s_l: Tensor = self.space_transformations(x)
 
         graph = knn_per_graph(g, s_l, self.k)
         graph.ndata["s_l"] = s_l
@@ -90,16 +81,17 @@ class GravNetConv(MessagePassing):
         #! this is the output_feature_transform
         out = self.propagate(
             edge_index,
-            x=[h_l, None],
+            x=h_l,
             edge_weight=edge_weight,
             size=(s_l.size(0), s_l.size(0)),
         )
-
         #! not sure this cat is exactly the same that is happening in the RaggedGravNet but they also cat
-
-        return self.lin(torch.cat([out, x], dim=-1)), graph, s_l
+        out = self.output_transformations(torch.cat([out, x], dim=-1))
+        return out, graph
 
     def message(self, x_j: Tensor, edge_weight: Tensor) -> Tensor:
+        # print(x_j)
+        # print("edge_weight",edge_weight)
         return x_j * edge_weight.unsqueeze(1)
 
     def aggregate(
@@ -127,7 +119,12 @@ def knn_per_graph(g, sl, k):
     for graph in graphs_list:
         non = graph.number_of_nodes()
         sls_graph = sl[node_counter : node_counter + non]
-        new_graph = dgl.knn_graph(sls_graph, k, exclude_self=True)
+        # new_graph = dgl.knn_graph(sls_graph, k, exclude_self=True)
+        edge_index = torch_cmspepr.knn_graph(sls_graph, k=k)
+        new_graph = dgl.graph(
+            (edge_index[0], edge_index[1]), num_nodes=sls_graph.shape[0]
+        )
+        new_graph = dgl.remove_self_loop(new_graph)
         new_graphs.append(new_graph)
         node_counter = node_counter + non
     return dgl.batch(new_graphs)
