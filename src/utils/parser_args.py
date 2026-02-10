@@ -429,7 +429,7 @@ parser.add_argument(
 parser.add_argument(
     "--frac_cluster_loss",
     type=float,
-    default=0.1,
+    default=0,
     help="Fraction of total pairs to use for the clustering loss",
 )
 parser.add_argument(
