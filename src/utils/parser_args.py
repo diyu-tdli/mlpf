@@ -435,7 +435,7 @@ parser.add_argument(
 parser.add_argument(
     "--condensation",
     action="store_true",
-    default=False,
+    default=True,
     help="use condensation loss and training",
 )
 
@@ -542,7 +542,7 @@ parser.add_argument(
 parser.add_argument(
     "--tracks",
     action="store_true",
-    default=False,
+    default=True,
     help="Are we using track information",
 )
 parser.add_argument(
