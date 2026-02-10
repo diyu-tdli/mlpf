@@ -63,7 +63,7 @@ def main():
             default_root_dir=args.model_prefix,
             logger=wandb_logger,
             max_epochs=args.num_epochs,
-            # strategy="ddp",
+            strategy="ddp", #_find_unused_parameters_true
             limit_train_batches=args.train_batches, #! It is important that all gpus have the same number of batches, adjust this number acoordingly
             limit_val_batches=5,
         )
@@ -85,7 +85,7 @@ def main():
         trainer = L.Trainer(
             callbacks=get_callbacks_eval(args),
             accelerator="gpu",
-            devices=[3],
+            devices=[1],
             default_root_dir=args.model_prefix,
             logger=wandb_logger,
         )

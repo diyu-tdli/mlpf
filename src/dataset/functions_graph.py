@@ -96,7 +96,7 @@ def create_graph(
     
     if ( not args.truth_tracking)and (not  args.ILD) and (not args.predict):
         g = make_bad_tracks_noise_tracks(g, y_data_graph)
-    if args.truth_tracking:
+    if args.truth_tracking and (not args.predict):
         g = remove_hits_outside_cone(g,y_data_graph, args.allegro)
         g = remove_tracks_in_noise_collection(g)
         
