@@ -104,7 +104,7 @@ CaloHitToMcTruthLinker.Parameters = {
 # Make sure that all collections are always available by patching in missing ones on-the-fly
 collPatcherRec = MarlinProcessorWrapper("CollPatcherREC", ProcessorType="PatchCollections")
 collPatcherRec.Parameters = {
-    "PatchCollections": parse_collection_patch_file("data_generation/condor_ILD/collections_rec_level.txt")
+    "PatchCollections": parse_collection_patch_file("data_generation/condor_ILD/pipeline-1/collections_rec_level.txt")
 }
 
 alg_list.append(CaloHitToMcTruthLinker)
