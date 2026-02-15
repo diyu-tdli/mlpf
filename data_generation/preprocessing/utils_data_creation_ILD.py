@@ -23,9 +23,10 @@ CALO_HIT_COLS = [
     "HcalEndcapRingCollectionRec",
     "HcalEndcapsCollectionRec",
     "MUON",
-    # "LCAL",
-    # "LHCAL",
-    # "BCAL",
+    #HACK: I need to disable these for from-old-rec run
+    "LCAL",
+    "LHCAL",
+    "BCAL",
 ]
 
 # Configure detector geometry parameters

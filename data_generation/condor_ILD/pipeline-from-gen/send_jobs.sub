@@ -1,0 +1,16 @@
+executable = data_generation/condor_ILD/pipeline-from-gen/pipeline.sh
+arguments = "$(file)"
+
+log = data/ILD/logs/$(Cluster).log
+output = data/ILD/logs/$(Cluster).$(Process).out
+error = data/ILD/logs/$(Cluster).$(Process).err
+
+request_cpus = 1
+request_memory = 1GB
+request_disk = 1GB
+
+transfer_output_files=""
+
+queue file from data/ILD/external/pythia_z_uds.txt
+
+# queue file from data/ILD/external/pythia_test.txt
