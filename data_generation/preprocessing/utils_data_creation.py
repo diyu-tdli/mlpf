@@ -180,9 +180,12 @@ def get_genparticles_and_adjacencies( prop_data, hit_data, calohit_links, sitrac
     gp_to_calohit = gp_to_calohit.toarray().argmax(axis=0).reshape(-1) #hit to MC link 
     gp_to_recoE = coo_matrix((hit_features["energy"], (gp_to_calohit, np.arange(n_hit))), shape=(n_gp, n_hit)).toarray().sum(axis=1)
     gp_to_calohit_beforecalomother = gp_to_calohit
-
     gp_to_calohit = np.array(gen_features["index_calomother"])[gp_to_calohit] #assign to the MC parent that was produced before calo (index of calomother)
-    gp_to_calohit_beforecalomother = gp_to_calohit_beforecalomother!=gp_to_calohit
+    gp_to_calohit_idx = gp_to_calohit
+    # print(np.sum(gp_to_calohit_beforecalomother!=gp_to_calohit))
+    # print(gp_to_calohit_beforecalomother[gp_to_calohit_beforecalomother!=gp_to_calohit])
+    # print(gp_to_calohit_idx[gp_to_calohit_beforecalomother!=gp_to_calohit])
+    # gp_to_calohit_beforecalomother = gp_to_calohit_beforecalomother!=gp_to_calohit
     gp_to_recoE = coo_matrix((hit_features["energy"], (gp_to_calohit, np.arange(n_hit))), shape=(n_gp, n_hit)).toarray().sum(axis=1)
     
     #! deprecated (bases the definition of reconstructable in cluster E)
@@ -250,13 +253,14 @@ def get_genparticles_and_adjacencies( prop_data, hit_data, calohit_links, sitrac
         pandora_features, 
         pfo_to_calohit, 
         pfo_to_track, 
-        gp_interacted_with_tracker_no_calo
+        gp_to_calohit_beforecalomother, 
+        gp_to_calohit_idx
     ), dic 
 
 def isProducedInCalo(vertices, BarrelRadius=2150, EndCapZ=2307):
 
     x, y, z = vertices[:,0], vertices[:,1], vertices[:,2]
-    radius = np.sqrt(x**2 + y**2 + z**2)
+    radius = np.sqrt(x**2 + y**2)
     return (radius > BarrelRadius) | (np.abs(z) > EndCapZ)
 
 def define_produced_before_calo_map(MCParticles_p4, gen_arr, parents):
@@ -542,7 +546,8 @@ class EventData:
         pandora_features=None,
         pfo_to_calohit = None, 
         pfo_to_track = None, 
-        gp_to_calohit_beforecalomother = None
+        gp_to_calohit_beforecalomother = None, 
+        gp_to_calohit_idx = None
     ):
         self.gen_features_target = gen_features_target  # feature matrix of the genparticles
         self.gen_features_true = gen_features_true
@@ -554,6 +559,7 @@ class EventData:
         self.pfo_to_calohit = pfo_to_calohit # array linking pfo to calohit
         self. pfo_to_track = pfo_to_track # array linking pfo to track
         self.gp_to_calohit_beforecalomother = gp_to_calohit_beforecalomother
+        self.gp_to_calohit_idx = gp_to_calohit_idx
 
 
 def hit_pfo_adj(prop_data, hit_idx_local_to_global, iev):

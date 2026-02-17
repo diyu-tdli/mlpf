@@ -20,7 +20,7 @@ def create_eff_dic_pandora(matched_pandora, id):
     eff_p_pid_status1, energy_eff_status1_p, errors_p_pid_status1 = calculate_eff(matched_pandora_id[matched_pandora_id.gen_status==1], log_scale=True, pandora=True )
     eff_p_pid_track, energy_eff_track_p, errors_p_pid_track = calculate_eff(matched_pandora_id[matched_pandora_id.is_track_in_MC==1], log_scale=True, pandora=True )
     
-    fakes_p, energy_fakes_p, fake_percent_energy, fake_percent_reco, fake_errors = calculate_fakes(matched_pandora, None, log_scale=True, pandora=True, id=id)
+    fakes_p, energy_fakes_p, fake_percent_energy, fake_percent_reco, fake_errors, fake_energy_error = calculate_fakes(matched_pandora, None, log_scale=True, pandora=True, id=id)
     photons_dic = {}
     photons_dic["eff_p"] = eff_p
     photons_dic["eff_p_pid"] = eff_p_pid
@@ -36,6 +36,7 @@ def create_eff_dic_pandora(matched_pandora, id):
     photons_dic["energy_eff_p_track"] = energy_eff_track_p
     photons_dic["fakes_p"] = fakes_p
     photons_dic["fakes_errors_p"]  = fake_errors
+    photons_dic["fakes_errors_energy_p"]  = fake_energy_error
     photons_dic["energy_fakes_p"] = energy_fakes_p
     photons_dic["fake_percent_energy_p"] = fake_percent_energy
     photons_dic["fake_percent_energy_reco_p"] = fake_percent_reco
@@ -70,12 +71,13 @@ def create_eff_dic(photons_dic, matched_, id, var_i, calc_fakes=True):
     photons_dic["energy_eff_track_" + str(var_i)] = energy_eff_track
 
     if calc_fakes:
-        fakes, energy_fakes, fake_percent_energy, fake_percent_reco, fake_errors = calculate_fakes(matched_, None, log_scale=True, pandora=False, id=id)
+        fakes, energy_fakes, fake_percent_energy, fake_percent_reco, fake_errors, fake_energy_error = calculate_fakes(matched_, None, log_scale=True, pandora=False, id=id)
         photons_dic["fakes_" + str(var_i)] = fakes
         photons_dic["fakes_errors" + str(var_i)] = fake_errors
         photons_dic["energy_fakes_" + str(var_i)] = energy_fakes
         photons_dic["fake_percent_energy_" + str(var_i)] = fake_percent_energy
         photons_dic["fake_percent_energy_reco_" + str(var_i)] = fake_percent_reco
+        photons_dic["fakes_errors_energy" + str(var_i)] = fake_energy_error
     return photons_dic
 
 
@@ -407,7 +409,7 @@ def plot_efficiency_all(sd_pandora, df_list, PATH_store, labels, ax=None):
 
 def calculate_eff(sd, log_scale=False, pandora=False, pid=False):
     if log_scale:
-        bins = np.exp(np.arange(np.log(0.1), np.log(80), 0.3))
+        bins = np.exp(np.arange(np.log(0.1), np.log(80), 0.2))
     else:
         bins = [0, 5, 10, 35, 50]
     eff = []
@@ -416,8 +418,8 @@ def calculate_eff(sd, log_scale=False, pandora=False, pid=False):
     for i in range(len(bins) - 1):
         bin_i = bins[i]
         bin_i1 = bins[i + 1]
-        mask_above = sd.reco_showers_E.values <= bin_i1
-        mask_below = sd.reco_showers_E.values > bin_i
+        mask_above = sd.true_showers_E.values <= bin_i1
+        mask_below = sd.true_showers_E.values > bin_i
         mask = mask_below * mask_above
         
         number_of_non_reconstructed_showers = np.sum(
@@ -444,7 +446,7 @@ def calculate_eff(sd, log_scale=False, pandora=False, pid=False):
 
 def calculate_fakes(sd, matched, log_scale=False, pandora=False, id=None):
     if log_scale:
-        bins_fakes = np.exp(np.arange(np.log(0.1), np.log(80), 0.3))
+        bins_fakes = np.exp(np.arange(np.log(0.1), np.log(80), 0.2))
     else:
         bins_fakes = [0, 5, 15, 35, 50]
     fake_rate = []
@@ -453,12 +455,13 @@ def calculate_fakes(sd, matched, log_scale=False, pandora=False, id=None):
     fake_percent_reco_energy = []
     id_our = pandora_to_our_mapping[id]
     fake_errors = []
+    fake_energy_error = []
     for i in range(len(bins_fakes) - 1):
         bin_i = bins_fakes[i]
         bin_i1 = bins_fakes[i + 1]
         if pandora:
-            mask_above = sd.pred_showers_E.values <= bin_i1
-            mask_below = sd.pred_showers_E.values > bin_i
+            mask_above = sd.pandora_calibrated_pfo.values <= bin_i1
+            mask_below = sd.pandora_calibrated_pfo.values > bin_i
             mask_pid = sd.pandora_pid.isin(our_to_pandora_mapping[id_our])
             mask_pid_truth = mask_above * mask_below * sd.pid.isin(our_to_pandora_mapping[id_our]) # The matched ones
             mask = mask_below * mask_above * mask_pid
@@ -470,9 +473,10 @@ def calculate_fakes(sd, matched, log_scale=False, pandora=False, id=None):
             total_E_meas = np.sum(sd.pandora_calibrated_pfo.values[mask])
             total_E_reco = np.sum(sd.pred_showers_E.values[mask])
             total_showers = len(sd.pred_showers_E.values[mask]) # The true showers
+            E = sd.pandora_calibrated_pfo[mask].values
         else:
-            mask_above = sd.pred_showers_E.values <= bin_i1
-            mask_below = sd.pred_showers_E.values > bin_i
+            mask_above = sd.calibrated_E.values <= bin_i1
+            mask_below = sd.calibrated_E.values > bin_i
             mask_pid = sd.pred_pid_matched == id_our
             mask_pid_truth = sd.pid.isin(our_to_pandora_mapping[id_our]) # The matched ones!
             mask = mask_below * mask_above * mask_pid
@@ -485,6 +489,7 @@ def calculate_fakes(sd, matched, log_scale=False, pandora=False, id=None):
             #non_fakes_mask = ~np.isnan(sd.pid)[mask]
             total_E_meas = np.sum(sd.calibrated_E.values[mask])
             total_E_reco = np.sum(sd.pred_showers_E.values[mask])
+            E = sd.calibrated_E[mask].values
         if total_showers > 0:
             fake_rate.append(fakes / total_showers)
             n_r = fakes
@@ -495,5 +500,20 @@ def calculate_fakes(sd, matched, log_scale=False, pandora=False, id=None):
             energy_fakes.append((bin_i1 + bin_i) / 2)
             fake_percent_energy.append(energy_in_fakes / total_E_meas)
             fake_percent_reco_energy.append(reco_in_fakes / total_E_reco)
-    return fake_rate, energy_fakes, fake_percent_energy, fake_percent_reco_energy, fake_errors 
+                      # total energies in bin (t_i)
+            is_fake = fakes_mask                     # boolean mask
+            # per-object fake energy
+            f = np.zeros_like(E)
+            f[is_fake] = E[is_fake]
+            # sums
+            F = np.sum(f)
+            T = np.sum(E)
+            R = F / T
+            # statistical uncertainty
+            sigma_R = np.sqrt(np.sum((f - R * E)**2)) / T
+            fake_energy_error.append(sigma_R)
+
+
+
+    return fake_rate, energy_fakes, fake_percent_energy, fake_percent_reco_energy, fake_errors, fake_energy_error
 
