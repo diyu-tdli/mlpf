@@ -3,13 +3,19 @@ import numpy as np
 import awkward
 import uproot
 import tqdm
-from preprocessing.utils_data_creation import get_feature_matrix, sanitize, get_reco_properties, build_dummy_array
-from preprocessing.utils_data_creation import track_feature_order, hit_feature_order, particle_feature_order, PandoraPFO_feature_order
-from preprocessing.utils_data_creation import  get_genparticles_and_adjacencies, mc_coll, track_coll
+from preprocessing.utils import get_feature_matrix, sanitize, build_dummy_array
+from preprocessing.utils import track_feature_order, hit_feature_order, particle_feature_order, PandoraPFO_feature_order
+from preprocessing.utils import  get_genparticles_and_adjacencies
 import time 
 
-def process_one_file(fn, ofn, eval_dataset, truth_tracking):
 
+
+
+def process_one_file(fn, ofn, args):
+    if args.ILD:
+        from preprocessing.utils_data_creation_ILD import  create_name_coll, geometry
+    else:
+        from preprocessing.utils_data_creation import   create_name_coll, geometry
     # output exists, do not recreate
     # if os.path.isfile(ofn):
     #     return
@@ -25,94 +31,63 @@ def process_one_file(fn, ofn, eval_dataset, truth_tracking):
             fi.get("podio_metadata").arrays("events___CollectionTypeInfo.collectionID")["events___CollectionTypeInfo.collectionID"][0]
         )
     }
+    NAMES_COL = create_name_coll(args.truth)
+
     prop_data = arrs.arrays(
         [
-            mc_coll,
-            "MCParticles.PDG",
-            "MCParticles.momentum.x",
-            "MCParticles.momentum.y",
-            "MCParticles.momentum.z",
-            "MCParticles.mass",
-            "MCParticles.charge",
-            "MCParticles.generatorStatus",
-            "MCParticles.simulatorStatus",
-            "MCParticles.daughters_begin",
-            "MCParticles.daughters_end",
-            "MCParticles.daughters_end",
-            "_MCParticles_daughters/_MCParticles_daughters.index",  # similar to "MCParticles#1.index" in clic
-            "_MCParticles_parents/_MCParticles_parents.index",  # similar to "MCParticles#1.index" in clic
-            track_coll,
-            "_SiTracks_Refitted_trackStates",
-            "_PandoraPFOs_tracks/_PandoraPFOs_tracks.index",
-            "PandoraClusters",
-            "_PandoraClusters_hits/_PandoraClusters_hits.index",
-            "_PandoraClusters_hits/_PandoraClusters_hits.collectionID",
-            "PandoraPFOs",
-            "_PandoraPFOs_clusters/_PandoraPFOs_clusters.index",
+            NAMES_COL.MC_PARTICLE_COL,
+            f"{NAMES_COL.MC_PARTICLE_COL}.PDG",
+            f"{NAMES_COL.MC_PARTICLE_COL}.momentum.x",
+            f"{NAMES_COL.MC_PARTICLE_COL}.momentum.y",
+            f"{NAMES_COL.MC_PARTICLE_COL}.momentum.z",
+            f"{NAMES_COL.MC_PARTICLE_COL}.mass",
+            f"{NAMES_COL.MC_PARTICLE_COL}.charge",
+            f"{NAMES_COL.MC_PARTICLE_COL}.generatorStatus",
+            f"{NAMES_COL.MC_PARTICLE_COL}.simulatorStatus",
+            f"{NAMES_COL.MC_PARTICLE_COL}.daughters_begin",
+            f"{NAMES_COL.MC_PARTICLE_COL}.daughters_end",
+            f"{NAMES_COL.MC_PARTICLE_COL}.daughters_end",
+            f"_{NAMES_COL.MC_PARTICLE_COL}_daughters/_{NAMES_COL.MC_PARTICLE_COL}_daughters.index",  # similar to "MCParticles#1.index" in clic
+            f"_{NAMES_COL.MC_PARTICLE_COL}_parents/_{NAMES_COL.MC_PARTICLE_COL}_parents.index",  # similar to "MCParticles#1.index" in clic
+            NAMES_COL.TRACKS_COL,
+            f"_{NAMES_COL.TRACKS_COL}_trackStates",
+            f"_{NAMES_COL.PANDORA_PFO_COL}_tracks/_{NAMES_COL.PANDORA_PFO_COL}_tracks.index",
+            f"{NAMES_COL.CLUSTERS_COL}",
+            f"_{NAMES_COL.CLUSTERS_COL}_hits/_{NAMES_COL.CLUSTERS_COL}_hits.index",
+            f"_{NAMES_COL.CLUSTERS_COL}_hits/_{NAMES_COL.CLUSTERS_COL}_hits.collectionID",
+            f"{NAMES_COL.PANDORA_PFO_COL}",
+            f"_{NAMES_COL.PANDORA_PFO_COL}_clusters/_{NAMES_COL.PANDORA_PFO_COL}_clusters.index",
             # "SiTracks_Refitted_dQdx",
         ]
     )
+
     calohit_links = arrs.arrays(
         [
-            "CalohitMCTruthLink.weight",
-            "_CalohitMCTruthLink_to/_CalohitMCTruthLink_to.collectionID",
-            "_CalohitMCTruthLink_to/_CalohitMCTruthLink_to.index",
-            "_CalohitMCTruthLink_from/_CalohitMCTruthLink_from.collectionID",
-            "_CalohitMCTruthLink_from/_CalohitMCTruthLink_from.index",
+            f"{NAMES_COL.CALOHIT_TO_MC_LINK_COL}.weight",
+            f"_{NAMES_COL.CALOHIT_TO_MC_LINK_COL}_to/_{NAMES_COL.CALOHIT_TO_MC_LINK_COL}_to.collectionID",
+            f"_{NAMES_COL.CALOHIT_TO_MC_LINK_COL}_to/_{NAMES_COL.CALOHIT_TO_MC_LINK_COL}_to.index",
+            f"_{NAMES_COL.CALOHIT_TO_MC_LINK_COL}_from/_{NAMES_COL.CALOHIT_TO_MC_LINK_COL}_from.collectionID",
+            f"_{NAMES_COL.CALOHIT_TO_MC_LINK_COL}_from/_{NAMES_COL.CALOHIT_TO_MC_LINK_COL}_from.index",
         ]
     )
-    if truth_tracking:
-        sitrack_links = arrs.arrays(
-            [
-                "SiTracks_Refitted_Relation.weight",
-                "_SiTracks_Refitted_Relation_to/_SiTracks_Refitted_Relation_to.collectionID",
-                "_SiTracks_Refitted_Relation_to/_SiTracks_Refitted_Relation_to.index",
-                "_SiTracks_Refitted_Relation_from/_SiTracks_Refitted_Relation_from.collectionID",
-                "_SiTracks_Refitted_Relation_from/_SiTracks_Refitted_Relation_from.index",
-            ]
-        )
-    else:
-         sitrack_links = arrs.arrays(
+    
+    sitrack_links = arrs.arrays(
         [
-            "SiTracksMCTruthLink.weight",
-            "_SiTracksMCTruthLink_to/_SiTracksMCTruthLink_to.collectionID",
-            "_SiTracksMCTruthLink_to/_SiTracksMCTruthLink_to.index",
-            "_SiTracksMCTruthLink_from/_SiTracksMCTruthLink_from.collectionID",
-            "_SiTracksMCTruthLink_from/_SiTracksMCTruthLink_from.index",
+            f"{NAMES_COL.TRACK_TO_MC_LINK_COL}.weight",
+            f"_{NAMES_COL.TRACK_TO_MC_LINK_COL}_to/_{NAMES_COL.TRACK_TO_MC_LINK_COL}_to.collectionID",
+            f"_{NAMES_COL.TRACK_TO_MC_LINK_COL}_to/_{NAMES_COL.TRACK_TO_MC_LINK_COL}_to.index",
+            f"_{NAMES_COL.TRACK_TO_MC_LINK_COL}_from/_{NAMES_COL.TRACK_TO_MC_LINK_COL}_from.collectionID",
+            f"_{NAMES_COL.TRACK_TO_MC_LINK_COL}_from/_{NAMES_COL.TRACK_TO_MC_LINK_COL}_from.index",
         ]
     )
+    hit_data = {}
+    for CALO_HIT_COL in NAMES_COL.CALO_HIT_COLS:
+        hit_data[CALO_HIT_COL] = arrs[CALO_HIT_COL].array() 
 
-    # maps the recoparticle track/cluster index (in tracks_begin,end and clusters_begin,end)
-    # to the index in the track/cluster collection
-    idx_rp_to_cluster = arrs["_PandoraPFOs_clusters/_PandoraPFOs_clusters.index"].array()
-    idx_rp_to_track = arrs["_PandoraPFOs_tracks/_PandoraPFOs_tracks.index"].array()
-
-    hit_data = {
-        "ECALBarrel": arrs["ECALBarrel"].array(),
-        "ECALEndcap": arrs["ECALEndcap"].array(),
-        "HCALBarrel": arrs["HCALBarrel"].array(),
-        "HCALEndcap": arrs["HCALEndcap"].array(),
-        "HCALOther": arrs["HCALOther"].array(),
-        "MUON": arrs["MUON"].array(),
-    }
     ret = []
-    i =0 
-    dic = {}
-    dic["energy_track"] = []
-    dic["index_no_track"] = []
-    dic["energy_no_track"] = []
-    dic["phi_no_track"] = []
-    dic["phi_track"] = []
     for iev in tqdm.tqdm(range(arrs.num_entries), total=arrs.num_entries):
-        # print("Processing event ", iev)
-        # if i ==1:
-    # get the reco particles
-        reco_arr = get_reco_properties( prop_data, iev)
-        reco_type = np.abs(reco_arr["PDG"])
-    
-    
         # get the genparticles and the links between genparticles and tracks/clusters
-        gpdata, dic  = get_genparticles_and_adjacencies( prop_data, hit_data, calohit_links, sitrack_links, iev, collectionIDs, eval_dataset, dic, truth_tracking)
+        gpdata  = get_genparticles_and_adjacencies( prop_data, hit_data, calohit_links, sitrack_links, iev, collectionIDs,NAMES_COL, geometry, args)
 
 
         n_tracks = len(gpdata.track_features["type"])
@@ -128,7 +103,7 @@ def process_one_file(fn, ofn, eval_dataset, truth_tracking):
         X_hit = get_feature_matrix(gpdata.hit_features, hit_feature_order)
         X_target = get_feature_matrix(gpdata.gen_features_target, particle_feature_order)
         # X_gen = get_feature_matrix(gpdata.gen_features_true, particle_feature_order)
-        if eval_dataset:
+        if args.dataset:
             X_pandora = get_feature_matrix(gpdata.pandora_features, PandoraPFO_feature_order)
         ytarget_track = track_to_gp
         ytarget_hit = hit_to_gp
@@ -141,7 +116,7 @@ def process_one_file(fn, ofn, eval_dataset, truth_tracking):
         if len(ytarget_track)>0:
             sanitize(ytarget_track)
         sanitize(ytarget_hit)
-        if eval_dataset:
+        if args.dataset:
             sanitize(X_pandora) 
             sanitize(gpdata.pfo_to_calohit)
             sanitize(gpdata.pfo_to_track)
@@ -154,7 +129,7 @@ def process_one_file(fn, ofn, eval_dataset, truth_tracking):
             "ygen_track": ytarget_track,
             "ygen_hit": ytarget_hit,
         }
-        if eval_dataset:
+        if args.dataset:
             this_ev["X_pandora"] = X_pandora
             this_ev["pfo_calohit"] = gpdata.pfo_to_calohit
             this_ev["pfo_track"] = gpdata.pfo_to_track
@@ -182,17 +157,17 @@ def parse_args():
     parser.add_argument("--outpath", type=str, default="raw", help="output path")
     parser.add_argument("--dataset", action="store_true", default=False, help="is dataset for eval")
     parser.add_argument("--truth", action="store_true", default=False, help="do tracks come from gen")
+    parser.add_argument("--ILD", action="store_true", default=False, help="use ILD data")
     args = parser.parse_args()
     return args
 
 
 def process(args):
     infile = args.input
-    truth_tracking = args.truth
     outfile = os.path.join(args.outpath, os.path.basename(infile).split(".")[0] + ".parquet")
-    eval_dataset = args.dataset 
     tic = time.time()
-    process_one_file(infile, outfile, eval_dataset,truth_tracking)
+
+    process_one_file(infile, outfile, args)
     toc = time.time()
     print("Processing time: ", toc - tic)
 
