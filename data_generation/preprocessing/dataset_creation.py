@@ -4,7 +4,7 @@ import awkward
 import uproot
 import tqdm
 from preprocessing.utils import get_feature_matrix, sanitize, build_dummy_array
-from preprocessing.utils import track_feature_order, hit_feature_order, particle_feature_order, PandoraPFO_feature_order
+from preprocessing.utils import track_feature_order, particle_feature_order, PandoraPFO_feature_order
 from preprocessing.utils import  get_genparticles_and_adjacencies
 import time 
 
@@ -13,9 +13,10 @@ import time
 
 def process_one_file(fn, ofn, args):
     if args.ILD:
-        from preprocessing.utils_data_creation_ILD import  create_name_coll, geometry
+        from preprocessing.config_ILD import  create_name_coll, geometry, hit_feature_order
     else:
-        from preprocessing.utils_data_creation import   create_name_coll, geometry
+        from preprocessing.config_CLD import   create_name_coll, geometry
+        from preprocessing.utils import hit_feature_order
     # output exists, do not recreate
     # if os.path.isfile(ofn):
     #     return
