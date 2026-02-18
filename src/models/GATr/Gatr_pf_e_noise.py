@@ -12,7 +12,7 @@ import dgl
 from src.logger.plotting_tools import PlotCoordinates
 from src.layers.object_cond import object_condensation_loss2
 from src.layers.utils_training import obtain_batch_numbers
-from src.models.energy_correction_NN_test import EnergyCorrection
+from src.models.energy_correction_NN_v1 import EnergyCorrection
 from src.layers.inference_oc import create_and_store_graph_output
 import lightning as L
 from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
