@@ -1,0 +1,1 @@
+/eos/experiment/fcc/users/m/mgarciam/mlpf/CLD/train/Z_qquds_pythiacards/events_112.hepmc
