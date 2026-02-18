@@ -38,6 +38,7 @@ def process_one_file(fn, ofn, eval_dataset, truth_tracking):
             "MCParticles.simulatorStatus",
             "MCParticles.daughters_begin",
             "MCParticles.daughters_end",
+            "MCParticles.daughters_end",
             "_MCParticles_daughters/_MCParticles_daughters.index",  # similar to "MCParticles#1.index" in clic
             "_MCParticles_parents/_MCParticles_parents.index",  # similar to "MCParticles#1.index" in clic
             track_coll,
@@ -126,7 +127,7 @@ def process_one_file(fn, ofn, eval_dataset, truth_tracking):
         X_track = get_feature_matrix(gpdata.track_features, track_feature_order)
         X_hit = get_feature_matrix(gpdata.hit_features, hit_feature_order)
         X_target = get_feature_matrix(gpdata.gen_features_target, particle_feature_order)
-        X_gen = get_feature_matrix(gpdata.gen_features_true, particle_feature_order)
+        # X_gen = get_feature_matrix(gpdata.gen_features_true, particle_feature_order)
         if eval_dataset:
             X_pandora = get_feature_matrix(gpdata.pandora_features, PandoraPFO_feature_order)
         ytarget_track = track_to_gp
@@ -149,10 +150,9 @@ def process_one_file(fn, ofn, eval_dataset, truth_tracking):
             "X_track": X_track,
             "X_hit": X_hit,
             "X_gen": X_target, 
-            "X_gen_true": X_gen, 
+            # "X_gen_true": X_gen, 
             "ygen_track": ytarget_track,
             "ygen_hit": ytarget_hit,
-            "ygen_true_interacted_tracker": gpdata.gp_to_calohit_beforecalomother
         }
         if eval_dataset:
             this_ev["X_pandora"] = X_pandora

@@ -182,7 +182,6 @@ def get_genparticles_and_adjacencies( prop_data, hit_data, calohit_links, sitrac
     gp_to_calohit_beforecalomother = gp_to_calohit
     gp_to_calohit = np.array(gen_features["index_calomother"])[gp_to_calohit] #assign to the MC parent that was produced before calo (index of calomother)
     gp_to_calohit_idx = gp_to_calohit
-    # print(np.sum(gp_to_calohit_beforecalomother!=gp_to_calohit))
     # print(gp_to_calohit_beforecalomother[gp_to_calohit_beforecalomother!=gp_to_calohit])
     # print(gp_to_calohit_idx[gp_to_calohit_beforecalomother!=gp_to_calohit])
     # gp_to_calohit_beforecalomother = gp_to_calohit_beforecalomother!=gp_to_calohit
@@ -261,9 +260,44 @@ def isProducedInCalo(vertices, BarrelRadius=2150, EndCapZ=2307):
 
     x, y, z = vertices[:,0], vertices[:,1], vertices[:,2]
     radius = np.sqrt(x**2 + y**2)
-    return (radius > BarrelRadius) | (np.abs(z) > EndCapZ)
+    isProducedInCalo = (radius > BarrelRadius) | (np.abs(z) > EndCapZ)
+    return isProducedInCalo
 
-def define_produced_before_calo_map(MCParticles_p4, gen_arr, parents):
+
+# Bit positions from edm4hep
+BIT_CREATED_IN_SIMULATION = 30
+BIT_BACKSCATTER = 29
+BIT_VERTEX_NOT_ENDPOINT = 28
+BIT_DECAYED_IN_TRACKER = 27
+BIT_DECAYED_IN_CALO = 26
+BIT_LEFT_DETECTOR = 25
+BIT_STOPPED = 24
+
+
+def check_bit(value, bit):
+    """Return True if bit is set in value."""
+    return (value >> bit) & 1 == 1
+
+def decode_simulator_status(sim_status):
+    """Return dictionary of decoded simulator status flags."""
+    return {
+        "CreatedInSimulation": check_bit(sim_status, BIT_CREATED_IN_SIMULATION),
+        "Backscatter": check_bit(sim_status, BIT_BACKSCATTER),
+        "VertexIsNotEndpointOfParent": check_bit(sim_status, BIT_VERTEX_NOT_ENDPOINT),
+        "DecayedInTracker": check_bit(sim_status, BIT_DECAYED_IN_TRACKER),
+        "DecayedInCalorimeter": check_bit(sim_status, BIT_DECAYED_IN_CALO),
+        "LeftDetector": check_bit(sim_status, BIT_LEFT_DETECTOR),
+        "Stopped": check_bit(sim_status, BIT_STOPPED),
+    }
+
+def backscattered_and_tracker(simStatus):
+    decoded_sim = decode_simulator_status(simStatus)
+    DecayedInTracker = decoded_sim["DecayedInTracker"]
+    Backscatter = decoded_sim["Backscatter"]
+    isBackScattered_decayedinTracker = Backscatter*(~DecayedInTracker)
+    return isBackScattered_decayedinTracker
+
+def correct_link(MCParticles_p4, gen_arr, parents):
     index = []
     isproducedincalo = True
     for particle_idx in range(0,len(MCParticles_p4.pt)):
@@ -271,7 +305,8 @@ def define_produced_before_calo_map(MCParticles_p4, gen_arr, parents):
         while isproducedincalo:
             vertex = np.array([gen_arr["vertex.x"][particle_idx_search],gen_arr["vertex.y"][particle_idx_search],gen_arr["vertex.z"][particle_idx_search]]).reshape(1,3)
             isproducedincalo = isProducedInCalo(vertex)
-            if isproducedincalo:
+            isBackScattered_decayedinTracker = backscattered_and_tracker(gen_arr["simulatorStatus"][particle_idx_search])
+            if isproducedincalo and (not isBackScattered_decayedinTracker):
                 parents_begin = gen_arr["parents_begin"][particle_idx_search]
                 parents_end = gen_arr["parents_end"][particle_idx_search]
                 particle_idx_search = parents[parents_begin:parents_end][0]
@@ -317,7 +352,7 @@ def gen_to_features(prop_data, iev):
     gen_arr["sin_phi"] = np.sin(gen_arr["phi"])
     gen_arr["cos_phi"] = np.cos(gen_arr["phi"])
 
-    index = define_produced_before_calo_map(MCParticles_p4, gen_arr, parents)
+    index = correct_link(MCParticles_p4, gen_arr, parents)
        
        
 
