@@ -14,6 +14,9 @@ import time
 def process_one_file(fn, ofn, args):
     if args.ILD:
         from preprocessing.config_ILD import  create_name_coll, geometry, hit_feature_order
+    elif args.ARC:
+        from preprocessing.config_CLD_ARC import  create_name_coll, geometry
+        from preprocessing.utils import hit_feature_order
     else:
         from preprocessing.config_CLD import   create_name_coll, geometry
         from preprocessing.utils import hit_feature_order
@@ -159,6 +162,7 @@ def parse_args():
     parser.add_argument("--dataset", action="store_true", default=False, help="is dataset for eval")
     parser.add_argument("--truth", action="store_true", default=False, help="do tracks come from gen")
     parser.add_argument("--ILD", action="store_true", default=False, help="use ILD data")
+    parser.add_argument("--ARC", action="store_true", default=False, help="use ARC data")
     args = parser.parse_args()
     return args
 
