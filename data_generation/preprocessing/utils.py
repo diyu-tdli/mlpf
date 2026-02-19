@@ -144,6 +144,7 @@ def correct_link(MCParticles_p4, gen_arr, parents, geometry):
             vertex = np.array([gen_arr["vertex.x"][particle_idx_search],gen_arr["vertex.y"][particle_idx_search],gen_arr["vertex.z"][particle_idx_search]]).reshape(1,3)
             isproducedincalo = isProducedInCalo(vertex, geometry.BarrelRadius, geometry.NBarrelSides, geometry.EndCapZ) 
             isBackScattered_decayedinTracker = backscattered_and_tracker(gen_arr["simulatorStatus"][particle_idx_search])
+            # print("i: ", particle_idx, "producedcalo ", isproducedincalo, isBackScattered_decayedinTracker)
             if isproducedincalo and (not isBackScattered_decayedinTracker):
                 parents_begin = gen_arr["parents_begin"][particle_idx_search]
                 parents_end = gen_arr["parents_end"][particle_idx_search]
@@ -620,6 +621,7 @@ def get_genparticles_and_adjacencies( prop_data, hit_data, calohit_links, sitrac
         gp_to_track_matrix = coo_matrix((genparticle_to_trk[2], (genparticle_to_trk[0], genparticle_to_trk[1])), shape=(n_gp, n_track))
         gp_to_track = gp_to_track_matrix.max(axis=1).todense()
         gp_to_track_index = gp_to_track_matrix.toarray().argmax(axis=0).reshape(-1)
+        # print("gp_to_track_index", gp_to_track_index)
     else:
         gp_to_track = np.zeros((n_gp, 1))
     # one hit has contribution from different MCs
@@ -666,6 +668,7 @@ def get_genparticles_and_adjacencies( prop_data, hit_data, calohit_links, sitrac
     idx_all_masked = np.where(mask_visible)[0]
 
     genpart_idx_all_to_filtered = {idx_all: idx_filtered for idx_filtered, idx_all in enumerate(idx_all_masked)}
+    # print(genpart_idx_all_to_filtered)
     # genpart_idx_all_to_filtered_true = {idx_all: idx_filtered for idx_filtered, idx_all in enumerate(idx_all_masked_true)}
     if np.array(mask_visible).sum() == 0:
         print("event does not have even one 'visible' particle. will skip event")
@@ -689,6 +692,7 @@ def get_genparticles_and_adjacencies( prop_data, hit_data, calohit_links, sitrac
     hit_to_gp = index_to_range(gp_to_calohit, genpart_idx_all_to_filtered)
     if len(genparticle_to_trk[0]) > 0:
         track_to_gp = index_to_range(gp_to_track_index, genpart_idx_all_to_filtered)
+        # print("track_to_gp", track_to_gp)
     else:
         track_to_gp = []
 
