@@ -1,9 +1,6 @@
-import os
 import numpy as np
 import awkward
-import uproot
 import vector
-import tqdm
 from scipy.sparse import coo_matrix
 from typing import Any, List, Optional
 # Bit positions from edm4hep
@@ -128,12 +125,12 @@ def decode_simulator_status(sim_status):
     }
 
 
-def backscattered_and_tracker(simStatus):
+def backscattered_and_not_decayed_in_tracker(simStatus):
     decoded_sim = decode_simulator_status(simStatus)
     DecayedInTracker = decoded_sim["DecayedInTracker"]
     Backscatter = decoded_sim["Backscatter"]
-    isBackScattered_decayedinTracker = Backscatter*(~DecayedInTracker)
-    return isBackScattered_decayedinTracker
+    isBackScattered_NotDecayedinTracker = Backscatter*(~DecayedInTracker)
+    return isBackScattered_NotDecayedinTracker
 
 def correct_link(MCParticles_p4, gen_arr, parents, geometry):
     index = []
@@ -143,9 +140,9 @@ def correct_link(MCParticles_p4, gen_arr, parents, geometry):
         while isproducedincalo:
             vertex = np.array([gen_arr["vertex.x"][particle_idx_search],gen_arr["vertex.y"][particle_idx_search],gen_arr["vertex.z"][particle_idx_search]]).reshape(1,3)
             isproducedincalo = isProducedInCalo(vertex, geometry.BarrelRadius, geometry.NBarrelSides, geometry.EndCapZ) 
-            isBackScattered_decayedinTracker = backscattered_and_tracker(gen_arr["simulatorStatus"][particle_idx_search])
-            # print("i: ", particle_idx, "producedcalo ", isproducedincalo, isBackScattered_decayedinTracker)
-            if isproducedincalo and (not isBackScattered_decayedinTracker):
+            isBackScattered_NotDecayedinTracker = backscattered_and_not_decayed_in_tracker(gen_arr["simulatorStatus"][particle_idx_search])
+            # print("i: ", particle_idx, "producedcalo ", isproducedincalo, isBackScattered_NotDecayedinTracker)
+            if isproducedincalo and (not isBackScattered_NotDecayedinTracker):
                 parents_begin = gen_arr["parents_begin"][particle_idx_search]
                 parents_end = gen_arr["parents_end"][particle_idx_search]
                 particle_idx_search = parents[parents_begin:parents_end][0]

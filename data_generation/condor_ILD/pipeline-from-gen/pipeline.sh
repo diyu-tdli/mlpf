@@ -57,12 +57,17 @@ k4run ILDReconstruction.py --inputFiles=${input_sim_file} --outputFileBase=${out
 
 echo "Running preprocessing ... "
 cd "${project_root}/data_generation"
-python3 -m preprocessing.dataset_creation_ILD --input ${input_rec_file} --outpath ${output_path}
+python3 -m preprocessing.dataset_creation --ILD --input ${input_rec_file} --outpath ${output_path}
 
 
-echo "Copying output file from the job node to the eos"
-xrdcp ${temp_job_dir}/*.parquet /eos/home-b/bdudar/mlpf/data/ILD/processed/zuds_from_dolores/${file_number}.parquet
+echo "Copying output edm4hep and parquet files from the job node to the eos"
+xrdcp ${input_rec_file} /eos/home-b/bdudar/mlpf/data/ILD/processed/zuds_from_dolores/edm4hep
+xrdcp ${output_path}/*.parquet /eos/home-b/bdudar/mlpf/data/ILD/processed/zuds_from_dolores/parquet/${file_number}.parquet
 
-
-echo "Removing heavy files from the temp job dir"
-rm -rf ${temp_job_dir}/*.root
+echo "Removing files from the temp dir on the job node"
+rm "${input_gen_file}"
+rm "${output_sim_file}"
+rm "${output_rec_file_base}_AIDA.root"
+rm "${output_rec_file_base}_PfoAnalysis.root"
+rm "${output_rec_file_base}_REC.edm4hep.root"
+rm "${output_path}/${file_number}_REC.parquet"
