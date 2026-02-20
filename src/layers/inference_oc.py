@@ -113,6 +113,37 @@ def DPC(X, device):
     labels = torch.Tensor(core_ids)+1
     return labels.long().to(device)
 
+def remove_bad_tracks_from_cluster_v1(g, labels_hdb):
+    mask_hit_type_t1 = g.ndata["hit_type"]==2
+    mask_hit_type_t2 = g.ndata["hit_type"]==1
+    mask_hit_type_t4 = g.ndata["hit_type"]==4
+    labels_hdb_corrected_tracks = labels_hdb.clone()
+    labels_changed_tracks = 0.0*(labels_hdb.clone())
+    # check each cluster
+    for i in range(0, torch.max(labels_hdb)+1):
+        mask_labels_i = labels_hdb == i
+        if torch.sum(mask_hit_type_t2[mask_labels_i])>0 and i>0:
+            e_cluster = torch.sum(g.ndata["e_hits"][mask_labels_i])
+            p_track = g.ndata["p_hits"][mask_labels_i*mask_hit_type_t2]
+            chi_s = g.ndata["chi_squared_tracks"][mask_labels_i*mask_hit_type_t2]
+            number_of_hits_muon = torch.sum(mask_labels_i*mask_hit_type_t4)
+            diffs = torch.abs(e_cluster-p_track)/p_track
+            diffs = diffs.view(-1)
+            sigma_3 = 4*0.5/torch.sqrt(p_track).view(-1)
+            print(sigma_3)
+            print("diffs", diffs)
+            bad_diffs = diffs>sigma_3
+            print(bad_diffs)
+            mean_pos_cluster = torch.mean(g.ndata["pos_hits_xyz"][mask_labels_i*mask_hit_type_t1], dim=0)
+            bad_tracks = bad_diffs*(number_of_hits_muon<1)
+            print("bad_tracks", bad_tracks)
+            cluster_t2_nodes = torch.nonzero(mask_labels_i & mask_hit_type_t2).view(-1)
+            bad_tracks_nodes = cluster_t2_nodes[bad_tracks]
+            labels_hdb_corrected_tracks[bad_tracks_nodes] = 0
+            if torch.sum(bad_tracks_nodes)>0:
+                labels_changed_tracks[mask_labels_i]=1
+            
+    return labels_hdb_corrected_tracks, labels_changed_tracks
 
 def remove_bad_tracks_from_cluster(g, labels_hdb):
     mask_hit_type_t1 = g.ndata["hit_type"]==2
@@ -229,7 +260,7 @@ def create_and_store_graph_output(
             #    labels_hdb += 1  # Quick hack
             #    raise Exception("!!!! Labels==0 !!!!")
             if not truth_tracks:
-                labels_hdb = remove_bad_tracks_from_cluster(dic["graph"], labels_hdb)
+                labels_hdb, labels_clusters_removed_tracks = remove_bad_tracks_from_cluster_v1(dic["graph"], labels_hdb)
         if predict and pandora_available:
             labels_pandora = get_labels_pandora(tracks, dic, model_output.device)
             num_clusters_pandora = len(labels_pandora.unique())
@@ -328,6 +359,7 @@ def create_and_store_graph_output(
                 number_of_fakes=number_of_fakes,
                 number_of_fake_showers_total=number_of_fake_showers_total1,
                 extra_features=extra_features, # To help with the debugging of the fakes
+                labels_clusters_removed_tracks= labels_clusters_removed_tracks
                 #fakes_labels=fakes_labels
             )
             if len(df_event1) > 1:
@@ -515,11 +547,14 @@ def generate_showers_data_frame(
     number_of_fake_showers_total=None,
     number_of_fakes=None,
     extra_features=None,
+    labels_clusters_removed_tracks=None
 ):
     shap = shap_vals is not None
     e_pred_showers = scatter_add(dic["graph"].ndata["e_hits"].view(-1), labels)
     e_pred_showers_ecal = scatter_add(1*(dic["graph"].ndata["hit_type"].view(-1)==2), labels)
     e_pred_showers_hcal = scatter_add(1*(dic["graph"].ndata["hit_type"].view(-1)==3), labels)
+    if not pandora:
+        removed_tracks = scatter_add(1*labels_clusters_removed_tracks, labels)
     if pandora:
         e_pred_showers_cali = scatter_mean(
             dic["graph"].ndata["pandora_pfo_energy"].view(-1), labels
@@ -681,6 +716,13 @@ def generate_showers_data_frame(
                 ]
                 #* e_pred_showers[index_matches]
             )
+            cluster_removed_tracks = matched_es.clone()
+            print(removed_tracks[index_matches])
+            cluster_removed_tracks[row_ind_] = (
+                1.0*removed_tracks[index_matches]
+                #* e_pred_showers[index_matches]
+            )
+
             # if len(row_ind) and len(index_matches):
             #     assert row_ind.max() < len(is_track)
             #     assert index_matches.max() < len(is_track_per_shower)
@@ -838,6 +880,8 @@ def generate_showers_data_frame(
             positions_pfo = torch.cat((matched_positions_pfo, fake_positions_pfo), dim=0)
             pandora_pid = torch.cat((matched_pandora_pid, fake_pandora_pid), dim=0)
             ref_pts_pfo =   torch.cat((matched_ref_pts_pfo, fakes_positions_ref), dim=0)
+        else:
+            cluster_removed_tracks = torch.cat((cluster_removed_tracks, 0*fake_showers_e_cali), dim=0)
         if not pandora:
             calibration_factor = torch.cat(
                 (calibration_per_shower, fake_showers_e_cali_factor), dim=0
@@ -924,6 +968,7 @@ def generate_showers_data_frame(
                 "HCAL_hits": e_pred_HCAL.detach().cpu(),
                 "gen_status": gen_status.detach().cpu(),
                 "labels":e_labels.detach().cpu(),
+                "cluster_removed_tracks":cluster_removed_tracks.detach().cpu(),
             }
             if pred_pos is not None:
                 pred_pos1 = e_pred_pos.detach().cpu()
