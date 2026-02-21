@@ -48,7 +48,7 @@ def build_trainer(args, gpus, logger, training=True):
     return L.Trainer(
         callbacks=callbacks,
         accelerator="gpu",
-        devices=gpus if training else [1],
+        devices=gpus,
         default_root_dir=args.model_prefix,
         logger=logger,
         max_epochs=args.num_epochs if training else None,
