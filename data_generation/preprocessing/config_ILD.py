@@ -1,18 +1,10 @@
 
-import os
-import numpy as np
-import awkward
-import uproot
-import vector
-import tqdm
-from scipy.sparse import coo_matrix
-from preprocessing.utils import Geometry, correct_link, particle_feature_order, Names_Collections, PandoraPFO_feature_order,  particle_feature_order, PandoraPFO_feature_order, track_feature_order, hit_feature_order
+from preprocessing.utils import Geometry, Names_Collections
 
-def create_name_coll():
+def create_name_coll(truth_tracking):
+    #NOTE: truth_tracking is not used in ILD, but we keep the argument for consistency with CLD
     NAMES_COL = Names_Collections()
 
-    # Configure all Collection names
-    # NOTE: Should be in the configuration file
     NAMES_COL.MC_PARTICLE_COL = "MCParticles"
     NAMES_COL.PANDORA_PFO_COL = "PandoraPFOs"
     NAMES_COL.TRACKS_COL = "MarlinTrkTracks"
@@ -27,19 +19,17 @@ def create_name_coll():
         "HcalEndcapRingCollectionRec",
         "HcalEndcapsCollectionRec",
         "MUON",
-        # "LCAL",
-        # "LHCAL",
-        # "BCAL",
+        "LCAL",
+        "LHCAL",
+        "BCAL",
     ]
+    return NAMES_COL
 
-geometry = Geometry(1804.8, 8,  2411.8, 2)
+geometry = Geometry(BarrelRadius=1804.8, NBarrelSides=8, EndCapZ=2411.8, B=3.5)
 # Configure detector geometry parameters
 # https://github.com/key4hep/k4geo/tree/a473d3fd3d7fb182530636f64d033f277d1c185d/ILD/compact/ILD_common_v02
 #BARREL_RADIUS = 1804.8   top_TPC_outer_radius + Ecal_Tpc_gap = 1769.8*mm + 35*mm
 #ENDCAP_Z = 2411.8        TPC_Ecal_Hcal_barrel_halfZ + 61.8*mm = 2350.0*mm + 61.8*mm
-
-
-
 
 hit_feature_order = [
     "elemtype",
@@ -59,18 +49,3 @@ hit_feature_order = [
     "subdetector",
     "type",
 ]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
