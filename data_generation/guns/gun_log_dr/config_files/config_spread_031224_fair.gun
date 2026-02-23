@@ -1,4 +1,4 @@
-npart_range 10
+npart_range 10,10
 eta_range -0.5,0.5 
 mom_range 0.5,50
 dr_range 0.5,0.5
