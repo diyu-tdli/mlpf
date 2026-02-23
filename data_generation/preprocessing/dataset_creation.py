@@ -14,6 +14,12 @@ import time
 def process_one_file(fn, ofn, args):
     if args.ILD:
         from preprocessing.config_ILD import  create_name_coll, geometry, hit_feature_order
+    elif args.ARC:
+        from preprocessing.config_CLD_ARC import  create_name_coll, geometry
+        from preprocessing.utils import hit_feature_order
+    elif args.ALLEGRO:
+        from preprocessing.config_ALLEGRO import  create_name_coll, geometry
+        from preprocessing.utils import hit_feature_order
     else:
         from preprocessing.config_CLD import   create_name_coll, geometry
         from preprocessing.utils import hit_feature_order
@@ -129,6 +135,7 @@ def process_one_file(fn, ofn, args):
             # "X_gen_true": X_gen, 
             "ygen_track": ytarget_track,
             "ygen_hit": ytarget_hit,
+            # "ygen_hit_calom": gpdata.gp_to_calohit_beforecalomother,
         }
         if args.dataset:
             this_ev["X_pandora"] = X_pandora
@@ -138,15 +145,30 @@ def process_one_file(fn, ofn, args):
 
         this_ev = awkward.Record(this_ev)
         ret.append(this_ev)
-        # i = i +1
+        # i = i +§
+        if args.ALLEGRO:
+            total_events = arrs.num_entries
+            if (iev + 1) % args.chunk_size == 0 or iev == total_events - 1:
+                if len(ret) > 0:
+                    ret_chunk = {k: awkward.from_iter([r[k] for r in ret]) for k in ret[0].fields}
+                    for k in ret_chunk.keys():
+                        if len(awkward.flatten(ret_chunk[k])) == 0:
+                            ret_chunk[k] = build_dummy_array(len(ret_chunk[k]), np.float32)
+                    ret_chunk = awkward.Record(ret_chunk)
+
+                    ofn = f"{ofn}_{chunk_index}.parquet"
+                    awkward.to_parquet(ret_chunk, ofn, compression="snappy")
+                    print(f"✅ Saved {ofn} ({len(ret)} events)")
+                    ret = []  # clear buffer
+                    chunk_index += 1
     
-       
-    ret = {k: awkward.from_iter([r[k] for r in ret]) for k in ret[0].fields}
-    for k in ret.keys():
-        if len(awkward.flatten(ret[k])) == 0:
-            ret[k] = build_dummy_array(len(ret[k]), np.float32)
-    ret = awkward.Record(ret)
-    awkward.to_parquet(ret, ofn, compression="snappy")
+    if ~args.ALLEGRO: 
+        ret = {k: awkward.from_iter([r[k] for r in ret]) for k in ret[0].fields}
+        for k in ret.keys():
+            if len(awkward.flatten(ret[k])) == 0:
+                ret[k] = build_dummy_array(len(ret[k]), np.float32)
+        ret = awkward.Record(ret)
+        awkward.to_parquet(ret, ofn, compression="snappy")
     # np.save('data.npy', dic, allow_pickle=True)
 
 
@@ -159,6 +181,9 @@ def parse_args():
     parser.add_argument("--dataset", action="store_true", default=False, help="is dataset for eval")
     parser.add_argument("--truth", action="store_true", default=False, help="do tracks come from gen")
     parser.add_argument("--ILD", action="store_true", default=False, help="use ILD data")
+    parser.add_argument("--ARC", action="store_true", default=False, help="use ARC data")
+    parser.add_argument("--ALLEGRO", action="store_true", default=False, help="use ALLEGRO data")
+    parser.add_argument("--chunk_size", type=int, default=100, help="Events per output file")
     args = parser.parse_args()
     return args
 

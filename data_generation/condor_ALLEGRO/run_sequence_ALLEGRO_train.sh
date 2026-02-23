@@ -88,7 +88,7 @@ then
         source /cvmfs/sft.cern.ch/lcg/views/LCG_108/x86_64-el9-gcc15-opt/setup.sh
     }
     wrapperfunction2
-    python  -m preprocessing.dataset_creation_ALLEGRO --input out_reco_edm4hep.root  --outpath . --chunk_size 100
+    python  -m preprocessing.dataset_creation --input out_reco_edm4hep.root  --outpath . --chunk_size 100 --ALLEGRO
     chunks=$(( (NEV + 99) / 100 ))
     for ((i=0; i<chunks; i++)); do
         echo "Loop $i"

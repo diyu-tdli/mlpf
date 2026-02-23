@@ -43,12 +43,12 @@ def setup_wandb(args):
 def build_trainer(args, gpus, logger, training=True):
     callbacks = get_callbacks(args) if training else get_callbacks_eval(args)
 
-    strategy = None if args.correction else "ddp" if training else None
+    strategy = "auto" if args.correction else "ddp" if training else None
 
     return L.Trainer(
         callbacks=callbacks,
         accelerator="gpu",
-        devices=gpus if training else [1],
+        devices=gpus,
         default_root_dir=args.model_prefix,
         logger=logger,
         max_epochs=args.num_epochs if training else None,

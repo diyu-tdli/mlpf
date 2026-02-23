@@ -55,6 +55,18 @@ def main():
         help="output directory ",
         default="/eos/experiment/fcc/ee/simulation/ClicDet/test/",
     )
+    parser.add_argument(
+        "--gentracking",
+        help="using tracking from gen ",
+        default="False",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--arc",
+        help="generating also ARC data ",
+        default="False",
+        action="store_true",
+    )
 
     parser.add_argument("--njobs", help="max number of jobs", default=2)
 
@@ -85,6 +97,8 @@ def main():
     sample = args.sample
     cldgeo = args.cldgeo
     cldconfig = args.cldconfig
+    gentracking = args.gentracking
+    arc = args.arc 
     njobs = int(args.njobs)
     nev = args.nev
     queue = args.queue
@@ -127,9 +141,28 @@ log                   = std/condor.$(ClusterId).log
                 print("{} : missing output file ".format(outputFile))
                 jobCount += 1
 
-                argts = "{} {} {} {} {} {} {} {} {}".format(
-                    homedir, config, nev, seed, outdir, condor_dir, sample, cldgeo, cldconfig
-                )
+                args = [
+                f"--homedir {homedir}",
+                f"--guncard {config}",
+                f"--nev {nev}",
+                f"--seed {seed}",
+                f"--outputdir {outdir}",
+                f"--dir {condor_dir}",
+                f"--sample {sample}",
+                f"--cldgeo {cldgeo}",
+                ]
+                # Only pass cldconfig if provided
+                if cldconfig:
+                    args.append(f"--pathcldconfig {cldconfig}")
+
+                # Convert string booleans safely
+                if gentracking:
+                    args.append("--gentracking")
+
+                if arc:
+                    args.append("--arc")
+
+                argts = " ".join(args)
 
                 cmdfile += 'arguments="{}"\n'.format(argts)
                 cmdfile += "queue\n"
