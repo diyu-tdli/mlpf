@@ -541,14 +541,24 @@ def hits_to_features(hit_data, iev, coll, feats, args):
     # set the subdetector type
     sdcoll = "subdetector"
     feat_arr[sdcoll] = np.zeros(len(feat_arr["type"]), dtype=np.int32)
-    if coll.startswith("ECAL"):
-        feat_arr[sdcoll][:] = 1
-    elif coll.startswith("HCAL"):
-        feat_arr[sdcoll][:] = 2
-    elif coll.startswith("MUON"):
-        feat_arr[sdcoll][:] = 3
+    if args.ILD:
+        if coll.startswith("Ecal"):
+            feat_arr[sdcoll][:] = 1
+        elif coll.startswith("Hcal"):
+            feat_arr[sdcoll][:] = 2
+        elif coll.startswith("MUON"):
+            feat_arr[sdcoll][:] = 3
+        else:
+            feat_arr[sdcoll][:] = 4
     else:
-        feat_arr[sdcoll][:] = 4
+        if coll.startswith("ECAL"):
+            feat_arr[sdcoll][:] = 1
+        elif coll.startswith("HCAL"):
+            feat_arr[sdcoll][:] = 2
+        elif coll.startswith("MUON"):
+            feat_arr[sdcoll][:] = 3
+        else:
+            feat_arr[sdcoll][:] = 4
 
     # hit elemtype is always 2
     feat_arr["elemtype"] = 2 * np.ones(len(feat_arr["type"]), dtype=np.int32)
