@@ -102,7 +102,7 @@ def main():
     njobs = int(args.njobs)
     nev = args.nev
     queue = args.queue
-    homedir = os.path.abspath(os.getcwd()) + "/../../"
+    homedir = "/eos/user/v/vriecher/mlpf_arc/mlpf"
 
     os.system("mkdir -p {}".format(outdir))
 
