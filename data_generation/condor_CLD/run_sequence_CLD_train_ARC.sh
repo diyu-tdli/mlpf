@@ -97,9 +97,6 @@ ddsim \
     --numberOfEvents "$NEV" \
     --random.seed "$SEED"
 
-########################################
-# Reconstruction
-########################################
 
 RECO_CMD=(k4run CLDReconstruction.py
           -n "$NEV"
@@ -111,6 +108,29 @@ if $GENTRACKING; then
 fi
 
 "${RECO_CMD[@]}"
+
+if $ARC; then
+    ddsim \
+        --compactFile "$K4GEO/FCCee/CLD/compact/CLD_o3_v01/CLD_o3_v01.xml" \
+        --outputFile out_sim_edm4hep_ARC.root \
+        --steeringFile "${PATHCLDCONFIG}/cld_arc_steer.py" \
+        --inputFiles events.hepmc \
+        --numberOfEvents "$NEV" \
+        --random.seed "$SEED"
+
+    ARC_RECO_CMD=(k4run CLDReconstruction.py
+                  -n "$NEV"
+                  --inputFiles out_sim_edm4hep_ARC.root
+                  --outputBasename out_reco_edm4hep_ARC)
+
+    if $GENTRACKING; then
+        ARC_RECO_CMD+=(--genTracking)
+    fi
+
+    "${ARC_RECO_CMD[@]}"
+fi
+
+
 
 ########################################
 # Switch environment for preprocessing
@@ -147,41 +167,21 @@ fi
 ########################################
 
 mkdir -p "${OUTPUTDIR}/05"
-mkdir -p "${OUTPUTDIR}/root_files"
+#mkdir -p "${OUTPUTDIR}/root_files"
 
 python /afs/cern.ch/work/f/fccsw/public/FCCutils/eoscopy.py \
     out_reco_edm4hep_REC.parquet \
     "${OUTPUTDIR}/05/pf_tree_${SEED}.parquet"
 
-python /afs/cern.ch/work/f/fccsw/public/FCCutils/eoscopy.py \
-    out_reco_edm4hep_REC.edm4hep.root \
-    "${OUTPUTDIR}/root_files/pf_tree_${SEED}.edm4hep.root"
+#python /afs/cern.ch/work/f/fccsw/public/FCCutils/eoscopy.py \
+#    out_reco_edm4hep_REC.edm4hep.root \
+#    "${OUTPUTDIR}/root_files/pf_tree_${SEED}.edm4hep.root"
 
-########################################
-# ARC block
-########################################
+
 
 if $ARC; then
 
-    ddsim \
-        --compactFile "$K4GEO/FCCee/CLD/compact/CLD_o3_v01/CLD_o3_v01.xml" \
-        --outputFile out_sim_edm4hep_ARC.root \
-        --steeringFile "${PATHCLDCONFIG}/cld_arc_steer.py" \
-        --inputFiles events.hepmc \
-        --numberOfEvents "$NEV" \
-        --random.seed "$SEED"
-
-    ARC_RECO_CMD=(k4run CLDReconstruction.py
-                  -n "$NEV"
-                  --inputFiles out_sim_edm4hep_ARC.root
-                  --outputBasename out_reco_edm4hep_ARC)
-
-    if $GENTRACKING; then
-        ARC_RECO_CMD+=(--genTracking)
-    fi
-
-    "${ARC_RECO_CMD[@]}"
-
+    
     ARC_DATA_CMD=(python -m preprocessing.dataset_creation
                   --input out_reco_edm4hep_ARC_REC.edm4hep.root
                   --outpath .
