@@ -95,5 +95,6 @@ datasets/
 
 # local notebooks
 notebooks/
+!notebooks/compare_arc_geometries.py
 # personal scripts
 scripts/scripts_vincent/
