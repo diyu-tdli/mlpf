@@ -93,4 +93,11 @@ datasets/
 .env
 .env.*
 
-*.png
+# local notebooks
+notebooks/
+!notebooks/
+!notebooks/compare_arc_geometries.py
+# personal scripts
+scripts/scripts_vincent/
+
+notebooks/*.png
