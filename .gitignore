@@ -92,3 +92,8 @@ datasets/
 # =========================
 .env
 .env.*
+
+# local notebooks
+notebooks/
+# personal scripts
+scripts/scripts_vincent/
