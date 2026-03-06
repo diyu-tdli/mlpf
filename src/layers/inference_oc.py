@@ -17,7 +17,7 @@ from src.utils.inference.per_particle_metrics import plot_event
 import random
 import string
 import hdbscan
-
+import time
 import densitypeakclustering as dc
 def local_density_energy(D, d_c,energies,  normalize=False):
     """
@@ -55,6 +55,7 @@ def local_density_energy(D, d_c,energies,  normalize=False):
     return rho
 
 def DPC_custom_CLD(X, g, device):
+    tic =  time.time()
     d_c = 0.1
     rho_min = 0.05
     delta_min = 0.4
@@ -71,6 +72,8 @@ def DPC_custom_CLD(X, g, device):
         idx = np.where((ids == indx) & (D[:, c] < 0.5))[0]
         core_ids[idx] = indx
     labels = torch.Tensor(core_ids)+1
+    toc = time.time()
+    print("clustering", toc-tic)
     return labels.long().to(device)
 
 def DPC_custom(X, g, device):
@@ -130,13 +133,12 @@ def remove_bad_tracks_from_cluster_v1(g, labels_hdb):
             diffs = torch.abs(e_cluster-p_track)/p_track
             diffs = diffs.view(-1)
             sigma_3 = 4*0.5/torch.sqrt(p_track).view(-1)
-            print(sigma_3)
-            print("diffs", diffs)
+
             bad_diffs = diffs>sigma_3
-            print(bad_diffs)
+
             mean_pos_cluster = torch.mean(g.ndata["pos_hits_xyz"][mask_labels_i*mask_hit_type_t1], dim=0)
             bad_tracks = bad_diffs*(number_of_hits_muon<1)
-            print("bad_tracks", bad_tracks)
+
             cluster_t2_nodes = torch.nonzero(mask_labels_i & mask_hit_type_t2).view(-1)
             bad_tracks_nodes = cluster_t2_nodes[bad_tracks]
             labels_hdb_corrected_tracks[bad_tracks_nodes] = 0
@@ -304,7 +306,7 @@ def create_and_store_graph_output(
         # torch.save(
         #      dic,
         #      path_save
-        #       + "/graphs_test/"
+        #       + "/merge_eval/"
         #      + str(local_rank)
         # #      + "_"
         #      + str(step)
@@ -705,6 +707,7 @@ def generate_showers_data_frame(
             matched_es_cali[row_ind_] = e_pred_showers_cali[index_matches]
             calibration_per_shower = matched_es.clone()
             calibration_per_shower[row_ind_] = corrections_per_shower[index_matches]
+            cluster_removed_tracks = matched_es.clone()
         else:
             matched_es_cali = matched_es.clone()
             number_of_showers = e_pred_showers[index_matches].shape[0] # DOESN'T INCLUDE THE FAKE SHOWERS
@@ -717,7 +720,6 @@ def generate_showers_data_frame(
                 #* e_pred_showers[index_matches]
             )
             cluster_removed_tracks = matched_es.clone()
-            print(removed_tracks[index_matches])
             cluster_removed_tracks[row_ind_] = (
                 1.0*removed_tracks[index_matches]
                 #* e_pred_showers[index_matches]
