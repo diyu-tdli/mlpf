@@ -11,7 +11,8 @@ Desktop.ini
 __pycache__/
 *.py[cod]
 *$py.class
-
+*.pt
+.claude/
 # C extensions
 *.so
 

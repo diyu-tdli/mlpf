@@ -74,22 +74,23 @@ if not os.path.exists(PATH_store_summary_plots):
 
 dir_top = args.path
 
-sd_hgb1, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_EPID_times1_9000_040226_basic_ecor_24000_800_10000_0_None.pt"), False, False)
-sd_hgb2, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_EPID_times1_9000_040226_basic_ecor_24000_100_4000_0_None.pt"), False, False)
-sd_hgb3, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_EPID_times1_9000_040226_basic_ecor_24000_400_6000_0_None.pt"), False, False)
-sd_hgb4, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_EPID_times1_9000_040226_basic_ecor_24000_600_8000_0_None.pt"), False, False)
-sd_hgb = concat_with_batch_fix([sd_hgb1, sd_hgb2, sd_hgb3,sd_hgb4 ])
+sd_hgb1, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/test_plot_hitpf20_0_None.pt"), False, False)
+# sd_hgb2, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_EPID_times1_9000_040226_basic_ecor_24000_100_4000_0_None.pt"), False, False)
+# sd_hgb3, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_EPID_times1_9000_040226_basic_ecor_24000_400_6000_0_None.pt"), False, False)
+# sd_hgb4, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_EPID_times1_9000_040226_basic_ecor_24000_600_8000_0_None.pt"), False, False)
+# sd_hgb = concat_with_batch_fix([sd_hgb1, sd_hgb2, sd_hgb3,sd_hgb4 ])
+sd_hgb = sd_hgb1
 
-sd_pandora1, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_EPID_times1_9000_040226_basic_ecor_24000_800_10000_0_None_pandora.pt"), False, False)
-sd_pandora2, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_EPID_times1_9000_040226_basic_ecor_24000_100_4000_0_None_pandora.pt"), False, False)
-sd_pandora3, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_EPID_times1_9000_040226_basic_ecor_24000_400_6000_0_None_pandora.pt"), False, False)
-sd_pandora4, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_EPID_times1_9000_040226_basic_ecor_24000_600_8000_0_None_pandora.pt"), False, False)
-sd_pandora = concat_with_batch_fix([sd_pandora1, sd_pandora2, sd_pandora3, sd_pandora4])
-
+sd_pandora1, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/test_plot_hitpf20_0_None_pandora.pt"), False, False)
+# sd_pandora2, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_EPID_times1_9000_040226_basic_ecor_24000_100_4000_0_None_pandora.pt"), False, False)
+# sd_pandora3, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_EPID_times1_9000_040226_basic_ecor_24000_400_6000_0_None_pandora.pt"), False, False)
+# sd_pandora4, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_EPID_times1_9000_040226_basic_ecor_24000_600_8000_0_None_pandora.pt"), False, False)
+# sd_pandora = concat_with_batch_fix([sd_pandora1, sd_pandora2, sd_pandora3, sd_pandora4])
+sd_pandora = sd_pandora1
 sd_hgb_gt1, _ = open_mlpf_dataframe(os.path.join(dir_top, "showers_df_evaluation/05_v1_accumv7_10_0_None.pt"), False, False)
 sd_hgb_gt = sd_hgb_gt1 #concat_with_batch_fix([sd_hgb_gt1, sd_hgb_gt2, sd_hgb_gt3])
 
-sd_hgb, sd_pandora = preprocess_dataframe(sd_hgb, sd_pandora, args.preprocess.split(","))
+# sd_hgb, sd_pandora = preprocess_dataframe(sd_hgb, sd_pandora, args.preprocess.split(","))
 
 mask = (sd_hgb.pred_pid_matched==4)*(sd_hgb.calibrated_E<1.5)
 sd_hgb.loc[mask, "pred_pid_matched"]=1
