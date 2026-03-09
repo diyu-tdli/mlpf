@@ -9,7 +9,7 @@ from src.layers.inference_oc import (
 from src.layers.inference_oc import hfdb_obtain_labels, clustering_obtain_labels, DPC_custom_CLD
 from src.layers.inference_oc import match_showers
 import torch_cmspepr
-from src.layers.inference_oc import remove_bad_tracks_from_cluster
+from src.layers.inference_oc import remove_bad_tracks_from_cluster, ≈∂
 class FreezeClustering(BaseFinetuning):
     def __init__(
         self,
@@ -99,7 +99,7 @@ def obtain_clustering_for_matched_showers(
                 #labels = hfdb_obtain_labels(X, model_output.device)
                 labels =DPC_custom_CLD(X, dic["graph"], model_output.device)
                 if not truth_tracks:
-                    labels = remove_bad_tracks_from_cluster(dic["graph"], labels)
+                    labels, _ = remove_bad_tracks_from_cluster_v1(dic["graph"], labels)
                 # labels = clustering_obtain_labels( X,betas.view(-1), betas.device,  tbeta=0.7, td=0.3)
                 #if labels.min() == 0 and labels.sum() == 0:
                 #    labels += 1  # Quick hack
