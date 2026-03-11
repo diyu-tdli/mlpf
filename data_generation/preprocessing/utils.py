@@ -61,19 +61,21 @@ track_feature_order = [
     "referencePoint.x", # store the reference at vertex
     "referencePoint.y", #10
     "referencePoint.z",#11
-    "referencePoint_calo.x", 
-    "referencePoint_calo.y", 
+    "referencePoint_calo.x",
+    "referencePoint_calo.y",
     "referencePoint_calo.z", #store the reference at calo
-    "chi2", 
-    "ndf", 
+    "chi2",
+    "ndf",
     "tanLambda",
-    "D0", 
-    "omega", 
-    "Z0", 
-    "time", 
+    "D0",
+    "omega",
+    "Z0",
+    "time",
     "px_calo", # at vertex
     "py_calo",#7
     "pz_calo",#8
+    "collectionID", 
+    "index"
 ]
 hit_feature_order = [
     "elemtype",
@@ -88,6 +90,8 @@ hit_feature_order = [
     "time",
     "subdetector",
     "type",
+    "collectionID", 
+    "index"
 ]
 def isProducedInCalo(vertices, BarrelRadius, NBarrelSides, EndCapZ):
     x, y, z = vertices[:,0], vertices[:,1], vertices[:,2]
@@ -296,9 +300,10 @@ def get_calohit_matrix_and_genadj(hit_data, calohit_links, iev, collectionIDs, N
     hit_feature_matrix = []
     for col in sorted(hit_data.keys()):
         icol = collectionIDs[col]
-        hit_features = hits_to_features(hit_data[col], iev, col, feats, args)
+        hit_features = hits_to_features(hit_data[col], iev, col, feats, args, icol)
+        nhits = len(hit_features["type"])
         hit_feature_matrix.append(hit_features)
-        for ihit in range(len(hit_data[col][col + ".energy"][iev])):
+        for ihit in range(nhits):
             hit_idx_global_to_local[hit_idx_global] = (icol, ihit)
             hit_idx_global += 1
 
@@ -339,7 +344,7 @@ def get_calohit_matrix_and_genadj(hit_data, calohit_links, iev, collectionIDs, N
         hit_idx_local_to_global,
     )
 
-def track_to_features(prop_data, iev, NAMES_COL, geometry):
+def track_to_features(prop_data, iev, NAMES_COL, geometry, track_col_id=-1):
     track_arr = prop_data[NAMES_COL.TRACKS_COL][iev]
     feats_from_track = ["type", "chi2", "ndf"]
     ret = {feat: track_arr[NAMES_COL.TRACKS_COL + "." + feat] for feat in feats_from_track}
@@ -382,6 +387,9 @@ def track_to_features(prop_data, iev, NAMES_COL, geometry):
 
     # track is always type 1
     ret["elemtype"] = 1 * np.ones(n_tr, dtype=np.float32)
+
+    ret["collectionID"] = np.full(n_tr, track_col_id, dtype=np.int64)
+    ret["index"] = np.arange(n_tr, dtype=np.int64)
 
     return awkward.Record(ret)
 
@@ -473,9 +481,12 @@ def hit_pfo_adj(prop_data, hit_idx_local_to_global, iev, NAMES_COL):
 
             # add edges from hit to cluster
             for icol, idx in zip(coll_range, idx_range):
-                hit_to_cluster_matrix_coo0.append(hit_idx_local_to_global[(icol, idx)])
-                hit_to_cluster_matrix_coo1.append(ipfo)
-                hit_to_cluster_matrix_w.append(1.0)
+                try:
+                    hit_to_cluster_matrix_coo0.append(hit_idx_local_to_global[(icol, idx)])
+                    hit_to_cluster_matrix_coo1.append(ipfo)
+                    hit_to_cluster_matrix_w.append(1.0)
+                except KeyError:
+                    continue
     return hit_to_cluster_matrix_coo0, hit_to_cluster_matrix_coo1, hit_to_cluster_matrix_w
 
 
@@ -535,12 +546,17 @@ def genparticle_track_adj(sitrack_links, iev, NAMES_COL):
     return genparticle_to_track_matrix_coo0, genparticle_to_track_matrix_coo1, genparticle_to_track_matrix_w
 
 
-def hits_to_features(hit_data, iev, coll, feats, args):
+def hits_to_features(hit_data, iev, coll, feats, args, icol=-1):
     feat_arr = {f: hit_data[coll + "." + f][iev] for f in feats}
+
+    nhits = len(feat_arr["type"]
+    )
+    feat_arr["collectionID"] = np.full(nhits, icol, dtype=np.int64)
+    feat_arr["index"] = np.arange(nhits, dtype=np.int64)
 
     # set the subdetector type
     sdcoll = "subdetector"
-    feat_arr[sdcoll] = np.zeros(len(feat_arr["type"]), dtype=np.int32)
+    feat_arr[sdcoll] = np.zeros(nhits, dtype=np.int32)
     if args.ILD:
         if coll.startswith("Ecal"):
             feat_arr[sdcoll][:] = 1
@@ -586,7 +602,7 @@ def get_genparticles_and_adjacencies( prop_data, hit_data, calohit_links, sitrac
     gen_features = gen_to_features(prop_data, iev, NAMES_COL, geometry)
     
     hit_features, genparticle_to_hit, hit_idx_local_to_global = get_calohit_matrix_and_genadj(hit_data, calohit_links, iev, collectionIDs, NAMES_COL, args)
-    track_features = track_to_features(prop_data, iev, NAMES_COL, geometry)
+    track_features = track_to_features(prop_data, iev, NAMES_COL, geometry, collectionIDs[NAMES_COL.TRACKS_COL])
     genparticle_to_trk = genparticle_track_adj( sitrack_links, iev, NAMES_COL)
 
     n_gp = awkward.count(gen_features["PDG"])
