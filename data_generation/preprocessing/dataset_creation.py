@@ -58,15 +58,22 @@ def process_one_file(fn, ofn, args):
             f"_{NAMES_COL.MC_PARTICLE_COL}_parents/_{NAMES_COL.MC_PARTICLE_COL}_parents.index",  # similar to "MCParticles#1.index" in clic
             NAMES_COL.TRACKS_COL,
             f"_{NAMES_COL.TRACKS_COL}_trackStates",
-            f"_{NAMES_COL.PANDORA_PFO_COL}_tracks/_{NAMES_COL.PANDORA_PFO_COL}_tracks.index",
-            f"{NAMES_COL.CLUSTERS_COL}",
-            f"_{NAMES_COL.CLUSTERS_COL}_hits/_{NAMES_COL.CLUSTERS_COL}_hits.index",
-            f"_{NAMES_COL.CLUSTERS_COL}_hits/_{NAMES_COL.CLUSTERS_COL}_hits.collectionID",
-            f"{NAMES_COL.PANDORA_PFO_COL}",
-            f"_{NAMES_COL.PANDORA_PFO_COL}_clusters/_{NAMES_COL.PANDORA_PFO_COL}_clusters.index",
-            # "SiTracks_Refitted_dQdx",
         ]
     )
+    if args.dataset:
+        pandora_data = arrs.arrays(
+            [
+                f"_{NAMES_COL.PANDORA_PFO_COL}_tracks/_{NAMES_COL.PANDORA_PFO_COL}_tracks.index",
+                f"{NAMES_COL.CLUSTERS_COL}",
+                f"_{NAMES_COL.CLUSTERS_COL}_hits/_{NAMES_COL.CLUSTERS_COL}_hits.index",
+                f"_{NAMES_COL.CLUSTERS_COL}_hits/_{NAMES_COL.CLUSTERS_COL}_hits.collectionID",
+                f"{NAMES_COL.PANDORA_PFO_COL}",
+                f"_{NAMES_COL.PANDORA_PFO_COL}_clusters/_{NAMES_COL.PANDORA_PFO_COL}_clusters.index",
+                # "SiTracks_Refitted_dQdx",
+            ]
+        )
+    else:
+        pandora_data = []
 
     calohit_links = arrs.arrays(
         [
@@ -94,7 +101,8 @@ def process_one_file(fn, ofn, args):
     ret = []
     for iev in tqdm.tqdm(range(arrs.num_entries), total=arrs.num_entries):
         # get the genparticles and the links between genparticles and tracks/clusters
-        gpdata  = get_genparticles_and_adjacencies( prop_data, hit_data, calohit_links, sitrack_links, iev, collectionIDs,NAMES_COL, geometry, args)
+        # if iev==71:
+        gpdata  = get_genparticles_and_adjacencies( prop_data, hit_data, pandora_data, calohit_links, sitrack_links, iev, collectionIDs,NAMES_COL, geometry, args)
 
 
         n_tracks = len(gpdata.track_features["type"])
@@ -135,7 +143,7 @@ def process_one_file(fn, ofn, args):
             # "X_gen_true": X_gen, 
             "ygen_track": ytarget_track,
             "ygen_hit": ytarget_hit,
-            # "ygen_hit_calom": gpdata.gp_to_calohit_beforecalomother,
+            "ygen_hit_calom": gpdata.gp_to_calohit_beforecalomother,
         }
         if args.dataset:
             this_ev["X_pandora"] = X_pandora
@@ -162,7 +170,7 @@ def process_one_file(fn, ofn, args):
                     ret = []  # clear buffer
                     chunk_index += 1
     
-    if ~args.ALLEGRO: 
+    if not args.ALLEGRO: 
         ret = {k: awkward.from_iter([r[k] for r in ret]) for k in ret[0].fields}
         for k in ret.keys():
             if len(awkward.flatten(ret[k])) == 0:
@@ -179,6 +187,8 @@ def parse_args():
     parser.add_argument("--input", type=str, help="Input file ROOT file", required=True)
     parser.add_argument("--outpath", type=str, default="raw", help="output path")
     parser.add_argument("--dataset", action="store_true", default=False, help="is dataset for eval")
+    parser.add_argument("--pandora", action="store_true", default=False,
+                        help="include Pandora PFO features in output parquet (sets --dataset implicitly)")
     parser.add_argument("--truth", action="store_true", default=False, help="do tracks come from gen")
     parser.add_argument("--ILD", action="store_true", default=False, help="use ILD data")
     parser.add_argument("--ARC", action="store_true", default=False, help="use ARC data")

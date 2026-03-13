@@ -598,7 +598,7 @@ def hits_to_features(hit_data, iev, coll, feats, args, icol=-1):
 
 
 
-def get_genparticles_and_adjacencies( prop_data, hit_data, calohit_links, sitrack_links, iev, collectionIDs, NAMES_COL, geometry, args):
+def get_genparticles_and_adjacencies( prop_data, hit_data, pandora_data, calohit_links, sitrack_links, iev, collectionIDs, NAMES_COL, geometry, args):
     gen_features = gen_to_features(prop_data, iev, NAMES_COL, geometry)
     
     hit_features, genparticle_to_hit, hit_idx_local_to_global = get_calohit_matrix_and_genadj(hit_data, calohit_links, iev, collectionIDs, NAMES_COL, args)
@@ -609,8 +609,8 @@ def get_genparticles_and_adjacencies( prop_data, hit_data, calohit_links, sitrac
     n_track = awkward.count(track_features["type"])
     n_hit = awkward.count(hit_features["type"])
     if args.dataset:
-        pandora_features = pandora_to_features(prop_data, iev, NAMES_COL)
-        hit_to_pfo = hit_pfo_adj(prop_data, hit_idx_local_to_global, iev, NAMES_COL)
+        pandora_features = pandora_to_features(pandora_data, iev, NAMES_COL)
+        hit_to_pfo = hit_pfo_adj(pandora_data, hit_idx_local_to_global, iev, NAMES_COL)
         n_pfo = awkward.count(pandora_features["PDG"])
         pfo_to_calohit_matrix = coo_matrix((hit_to_pfo[2], (hit_to_pfo[1], hit_to_pfo[0])), shape=(n_pfo, n_hit))
         pfo_to_calohit = pfo_to_calohit_matrix.toarray().argmax(axis=0)
@@ -618,7 +618,7 @@ def get_genparticles_and_adjacencies( prop_data, hit_data, calohit_links, sitrac
         pfo_to_calohit_nolink_mask = np.array(pfo_to_calohit_nolink_mask).reshape(-1)
         pfo_to_calohit[pfo_to_calohit_nolink_mask] = -1 #if no link set to -1
 
-        pfo_to_track = track_pfo_adj(prop_data, hit_idx_local_to_global, iev, NAMES_COL)
+        pfo_to_track = track_pfo_adj(pandora_data, hit_idx_local_to_global, iev, NAMES_COL)
         pfo_to_track_matrix = coo_matrix((pfo_to_track[2], (pfo_to_track[1], pfo_to_track[0])), shape=(n_pfo, n_track))
         pfo_to_track= pfo_to_track_matrix.toarray().argmax(axis=0).reshape(-1)
         pfo_to_track_nolink_mask  = (pfo_to_track_matrix.sum(axis=0))==0
