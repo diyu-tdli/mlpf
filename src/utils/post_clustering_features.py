@@ -8,7 +8,7 @@ def calculate_eta(x, y, z):
     theta = torch.arctan2(torch.sqrt(x ** 2 + y ** 2), z)
     return -torch.log(torch.tan(theta / 2))
 
-def get_post_clustering_features(graphs_new, sum_e, is_muons=False, add_hit_chis=False):
+def get_post_clustering_features(graphs_new, sum_e, is_muons=False, add_hit_chis=False, ILD=False):
     '''
     Obtain graph-level qualitative features that can then be used to regress the energy corr. factor.
     :param graph_batch: Output from the previous step - clustered, matched showers
@@ -21,7 +21,10 @@ def get_post_clustering_features(graphs_new, sum_e, is_muons=False, add_hit_chis
         batch_idx.extend([i] * n)
         batch_bounds.append(n)
     batch_idx = torch.tensor(batch_idx).to(graphs_new.device)
-    e_hits = graphs_new.ndata["h"][:, 8]
+    if ILD:
+        e_hits = graphs_new.ndata["h"][:, 9]
+    else:
+        e_hits = graphs_new.ndata["h"][:, 8]
     if is_muons:
         muon_hits = graphs_new.ndata["h"][:, 7]
         filter_muon = torch.where(muon_hits)[0]
@@ -40,9 +43,14 @@ def get_post_clustering_features(graphs_new, sum_e, is_muons=False, add_hit_chis
     # similar as above but with scatter_std -- !!!!! TODO: Retrain the base EC models using this definition !!!!!
     per_graph_e_hits_hcal_dispersion = scatter_std(e_hits[filter_hcal], batch_idx[filter_hcal], dim_size=batch_idx.max() + 1) ** 2
     # track_nodes =
-    track_p = scatter_sum(graphs_new.ndata["h"][:, 9], batch_idx)
-    chis_tracks = scatter_sum(graphs_new.ndata["chi_squared_tracks"], batch_idx)
-    num_tracks = scatter_sum((graphs_new.ndata["h"][:, 9] > 0).type(torch.int), batch_idx)
+    if ILD:
+        track_p = scatter_sum(graphs_new.ndata["h"][:, 10], batch_idx)
+        chis_tracks = scatter_sum(graphs_new.ndata["chi_squared_tracks"], batch_idx)
+        num_tracks = scatter_sum((graphs_new.ndata["h"][:, 10] > 0).type(torch.int), batch_idx)
+    else:
+        track_p = scatter_sum(graphs_new.ndata["h"][:, 9], batch_idx)
+        chis_tracks = scatter_sum(graphs_new.ndata["chi_squared_tracks"], batch_idx)
+        num_tracks = scatter_sum((graphs_new.ndata["h"][:, 9] > 0).type(torch.int), batch_idx)
     track_p = track_p / num_tracks
     track_p[num_tracks == 0] = 0.
     chis_tracks = chis_tracks / num_tracks

@@ -60,7 +60,7 @@ class EnergyCorrectionWrapper(torch.nn.Module):
     ):
         super(EnergyCorrectionWrapper, self).__init__()
         if not charged:
-            self.ec_model_wrapper_neutral_avg = ECNetWrapperAvg()
+            self.ec_model_wrapper_neutral_avg = ECNetWrapperAvg(ILD=args.ILD if args is not None else False)
         self.charged = charged
         self.args = args
         self.predict_arg = predict
@@ -155,7 +155,7 @@ class EnergyCorrectionWrapper(torch.nn.Module):
         if not self.charged:
             self.model.to(device)
         self.PickPAtDCA = PickPAtDCA()
-        self.AvgHits = AverageHitsP(ecal_only=True)
+        self.AvgHits = AverageHitsP(ecal_only=True, ILD=self.args.ILD)
         self.NeutralPCA = NeutralPCA()
         self.ThrustAxis = ThrustAxis()
 
@@ -227,9 +227,14 @@ class EnergyCorrectionWrapper(torch.nn.Module):
             x = graphs_new.ndata["h"]
             edge_index = torch.stack(graphs_new.edges())
             hits_points = graphs_new.ndata["h"][:, 0:3]
-            hit_type = graphs_new.ndata["h"][:, 4:8].argmax(dim=1)
-            p = graphs_new.ndata["h"][:, 9]
-            e = graphs_new.ndata["h"][:, 8]
+            if self.args.ILD:
+                hit_type = graphs_new.ndata["h"][:, 4:9].argmax(dim=1)
+                p = graphs_new.ndata["h"][:, 10]
+                e = graphs_new.ndata["h"][:, 9]
+            else:
+                hit_type = graphs_new.ndata["h"][:, 4:8].argmax(dim=1)
+                p = graphs_new.ndata["h"][:, 9]
+                e = graphs_new.ndata["h"][:, 8]
             embedded_inputs = embed_point(hits_points) + embed_scalar(
                 hit_type.view(-1, 1)
             )
@@ -279,7 +284,7 @@ class EnergyCorrectionWrapper(torch.nn.Module):
             score_pred = None
         if self.pos_regression:
             if self.charged:
-                p_tracks, pos, ref_pt_pred = self.PickPAtDCA.predict(x_global_features, graphs_new)
+                p_tracks, pos, ref_pt_pred = self.PickPAtDCA.predict(x_global_features, graphs_new, self.args.ILD)
                 
                 E = torch.norm(pos, dim=1)
                 if self.unit_p:
@@ -425,10 +430,11 @@ class EnergyCorrection():
             g,
             x,
             y,
-            self.main_model.trainer.global_rank,
+            0,
             use_gt_clusters=self.args.use_gt_clusters,
             add_fakes=add_fakes,
-            truth_tracks=self.args.truth_tracking
+            truth_tracks=self.args.truth_tracking,
+            fix_clusters_class=getattr(self.main_model, '_fix_clusters_class', None),
         )
         time_matching_end = time()
         # wandb.log({"time_clustering_matching": time_matching_end - time_matching_start})
@@ -436,7 +442,7 @@ class EnergyCorrection():
         batch_idx = []
         for i, n in enumerate(batch_num_nodes):
             batch_idx.extend([i] * n)
-        batch_idx = torch.tensor(batch_idx).to(self.main_model.device)
+        batch_idx = torch.tensor(batch_idx).to(graphs_new.ndata["h"].device)
         graphs_new.ndata["h"][:, 0:3] = graphs_new.ndata["h"][:, 0:3] / 3300
         # TODO: add global features to each node here
         graphs_sum_features = scatter_add(graphs_new.ndata["h"], batch_idx, dim=0)
@@ -451,7 +457,7 @@ class EnergyCorrection():
         assert shape0[1] * 2 == graphs_new.ndata["h"].shape[1]
         # print("Also computing graph-level features")
         graphs_high_level_features = get_post_clustering_features(
-            graphs_new, sum_e, is_muons=self.main_model.args.is_muons, add_hit_chis=self.args.add_track_chis
+            graphs_new, sum_e, is_muons=self.main_model.args.is_muons, add_hit_chis=self.args.add_track_chis, ILD=self.args.ILD
         )
         extra_features = get_extra_features(graphs_new, betas)
         pred_energy_corr = torch.ones(graphs_high_level_features.shape[0]).to(
@@ -496,9 +502,11 @@ class EnergyCorrection():
             graphs_high_level_features.shape[0] == graphs_new.batch_num_nodes().shape[0]
         )
         features_neutral_no_nan = graphs_high_level_features[neutral_idx]
-        features_neutral_no_nan[features_neutral_no_nan != features_neutral_no_nan] = 0
+        # features_neutral_no_nan[features_neutral_no_nan != features_neutral_no_nan] = 0  # only catches NaN, not inf
+        features_neutral_no_nan[~torch.isfinite(features_neutral_no_nan)] = 0
         features_charged_no_nan = graphs_high_level_features[charged_idx]
-        features_charged_no_nan[features_charged_no_nan != features_charged_no_nan] = 0
+        # features_charged_no_nan[features_charged_no_nan != features_charged_no_nan] = 0  # only catches NaN, not inf
+        features_charged_no_nan[~torch.isfinite(features_charged_no_nan)] = 0
         # if self.args.ec_model == "gat" or self.args.ec_model == "gat-concat":
         return (
             graphs_new,
@@ -721,30 +729,38 @@ class EnergyCorrection():
         else:
             loss_EC_neutrals = 0
         filt_neutrons = (e_true[dic_e_cor["neutrals_idx"]] < 5).cpu() & (torch.tensor(pid_true_matched)[dic_e_cor["neutrals_idx"].cpu()] == 2112)
-        loss_EC_neutrons = torch.nn.L1Loss()(
-            e_cor[dic_e_cor["neutrals_idx"]][filt_neutrons].detach().cpu(), e_true[dic_e_cor["neutrals_idx"]][filt_neutrons].detach().cpu()
-        )
-
-        wandb.log({
-            "loss_EC_neutrals": loss_EC_neutrals, 
-            "loss_EC_neutrons": loss_EC_neutrons
-        })
+        # loss_EC_neutrons = torch.nn.L1Loss()(  # returns NaN on empty tensor when filt_neutrons is all False
+        #     e_cor[dic_e_cor["neutrals_idx"]][filt_neutrons].detach().cpu(), e_true[dic_e_cor["neutrals_idx"]][filt_neutrons].detach().cpu()
+        # )
+        if filt_neutrons.any():
+            loss_EC_neutrons = torch.nn.L1Loss()(
+                e_cor[dic_e_cor["neutrals_idx"]][filt_neutrons].detach().cpu(), e_true[dic_e_cor["neutrals_idx"]][filt_neutrons].detach().cpu()
+            )
+        else:
+            loss_EC_neutrons = torch.tensor(0.0)
 
         ########### loss PID ###########
-        # correct assignation of PIDs without track and go from PID montecarlo number to int 
+        # correct assignation of PIDs without track and go from PID montecarlo number to int
         if len(self.pids_charged):
             charged_PID_pred, charged_PID_true_onehot, mask_charged = obtain_PID_charged(dic_e_cor,pid_true_matched, self.pids_charged, self.args, self.pid_conversion_dict)
-            
+
         if len(self.pids_neutral):
             neutral_PID_pred, neutral_PID_true_onehot, mask_neutral = obtain_PID_neutral(dic_e_cor,pid_true_matched, self.pids_neutral, self.args, self.pid_conversion_dict)
-        
+
         if len(self.pids_charged):
-            loss_charged_pid,acc_charged, stats= pid_loss_weighted(charged_PID_pred, charged_PID_true_onehot,e_true[dic_e_cor["charged_idx"]], mask_charged, stats, fixed, "charged")        
-            wandb.log({"loss_charged_pid": loss_charged_pid})
-       
+            loss_charged_pid,acc_charged, stats= pid_loss_weighted(charged_PID_pred, charged_PID_true_onehot,e_true[dic_e_cor["charged_idx"]], mask_charged, stats, fixed, "charged")
+
         if len(self.pids_neutral):
             loss_neutral_pid,acc_neutral, stats = pid_loss_weighted(neutral_PID_pred, neutral_PID_true_onehot,e_true, mask_neutral, stats, fixed, "neutral")
-            wandb.log({"loss_neutral_pid": loss_neutral_pid})
+
+        import torch.distributed as dist
+        if not dist.is_available() or not dist.is_initialized() or dist.get_rank() == 0:
+            wandb.log({
+                "loss_EC_neutrals": loss_EC_neutrals,
+                "loss_EC_neutrons": loss_EC_neutrons,
+                "loss_charged_pid": loss_charged_pid,
+                "loss_neutral_pid": loss_neutral_pid,
+            })
         ########### loss score ###########
         if self.fake_score_network:
             loss_score = loss_score_func(dic_e_cor)
@@ -861,7 +877,7 @@ def pid_loss_weighted(neutral_PID_pred, neutral_PID_true_onehot,e_true, mask_neu
 
         # if name =="charged":
         #     e_true_ = e_true[mask_neutral]
-            # mask_muons = ((torch.argmax(pid_true)==2)*(e_true_<1.5)).bool()
+        #     mask_muons = ((torch.argmax(pid_true)==2)*(e_true_<1.5)).bool()
             # print("mask_muons", torch.sum(mask_muons))
             # pid_pred = pid_pred[~mask_muons]
             # pid_true = pid_true[~mask_muons]

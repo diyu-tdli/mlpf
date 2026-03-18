@@ -590,6 +590,27 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--fix-neutrals",
+    default=False,
+    action="store_true",
+    help="Replace predicted cluster labels for neutral hadron hits with true MC labels before energy correction.",
+)
+
+parser.add_argument(
+    "--fix-photons",
+    default=False,
+    action="store_true",
+    help="Replace predicted cluster labels for photon hits with true MC labels before energy correction.",
+)
+
+parser.add_argument(
+    "--fix-ch",
+    default=False,
+    action="store_true",
+    help="Replace predicted cluster labels for charged hadron hits with true MC labels before energy correction.",
+)
+
+parser.add_argument(
     "--ec-model",
     default="",
     type=str,

@@ -9,7 +9,8 @@ from src.layers.inference_oc import (
 from src.layers.inference_oc import hfdb_obtain_labels, clustering_obtain_labels, DPC_custom_CLD
 from src.layers.inference_oc import match_showers
 import torch_cmspepr
-from src.layers.inference_oc import remove_bad_tracks_from_cluster, ≈∂
+from src.layers.inference_oc import remove_bad_tracks_from_cluster_v1
+from src.layers.inference_oc import _fix_labels_for_classes
 class FreezeClustering(BaseFinetuning):
     def __init__(
         self,
@@ -60,10 +61,11 @@ def obtain_batch_numbers(x, g):
 
 
 def obtain_clustering_for_matched_showers(
-    batch_g, model_output, y_all, local_rank, use_gt_clusters=False, add_fakes=True, truth_tracks=False
+    batch_g, model_output, y_all, local_rank, use_gt_clusters=False, add_fakes=True, truth_tracks=False,
+    fix_clusters_class=None,
 ):
     if use_gt_clusters:
-        print("!!! Using GT clusters for Energy Correction !!!!")
+        pass  # GT clusters mode: labels come from particle_number
     graphs_showers_matched = []
     graphs_showers_fakes = []
     true_energy_showers = []
@@ -103,6 +105,11 @@ def obtain_clustering_for_matched_showers(
                 # labels = clustering_obtain_labels( X,betas.view(-1), betas.device,  tbeta=0.7, td=0.3)
                 #if labels.min() == 0 and labels.sum() == 0:
                 #    labels += 1  # Quick hack
+
+        if fix_clusters_class:
+            labels = _fix_labels_for_classes(
+                labels, dic["graph"], dic["part_true"], fix_clusters_class, model_output.device
+            )
         particle_ids = torch.unique(dic["graph"].ndata["particle_number"])
         shower_p_unique = torch.unique(labels)
         shower_p_unique, row_ind, col_ind, i_m_w, _ = match_showers(

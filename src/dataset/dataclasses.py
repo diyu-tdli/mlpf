@@ -32,6 +32,8 @@ class Hits:
     chi_squared_tracks: Any
     hit_type_one_hot: Any
     time_v:Any
+    # index: Any
+    # collectionID: Any
     # hit_particle_link_calomother: Any
 
     
@@ -75,7 +77,7 @@ class Hits:
             X_track = torch.tensor(output["X_track"])
         # obtain hit type
         if args.ILD:
-            hit_type_feature_hit = X_hit[:,-2]+1 #tyep (1,2,3,4 hits)
+            hit_type_feature_hit = X_hit[:,14]+1 #tyep (1,2,3,4 hits)
             time = torch.cat((X_hit[:,9], X_track[:,5]*0),dim=0).view(-1,1)
             time_10ps = torch.cat((X_hit[:,10], X_track[:,5]*0),dim=0).view(-1,1)
             time_50ps = torch.cat((X_hit[:,11], X_track[:,5]*0),dim=0).view(-1,1)
@@ -92,6 +94,8 @@ class Hits:
             hit_type_feature = hit_type_feature_hit.to(torch.int64)
         # obtain the position of the hits and the energies and p
         pos_xyz_hits_hits = X_hit[:,6:9]
+        # index_h = X_hit[:,-1]
+        # collectionID_h = X_hit[:,-2]
         e_hits = X_hit[:,5]
         p_hits = X_hit[:,5]*0
 
@@ -103,9 +107,15 @@ class Hits:
             p_tracks =X_track[:,5]
             pos_pxpypz_hits_tracks = X_track[:,6:9]
             pos_pxpypz = torch.cat((pos_xyz_hits_hits*0, pos_pxpypz_hits_tracks), dim=0)
-            pos_pxpypz_hits_tracks = X_track[:,22:]
+            pos_pxpypz_hits_tracks = X_track[:,22:25]
             pos_pxpypz_calo = torch.cat((pos_xyz_hits_hits*0, pos_pxpypz_hits_tracks), dim=0)
             p = torch.cat((p_hits, p_tracks), dim=0).view(-1,1)
+
+            # index_t = X_track[:,-1] #(index.i)
+            # index_ht = torch.cat((index_h, index_t), dim=0)
+            # collectionID_t = X_track[:,-2] #(collectionID.i)
+            # collectionID_ht = torch.cat((collectionID_h, collectionID_t), dim=0)
+
         else:
             pos_xyz_hits = pos_xyz_hits_hits
             e = e_hits.view(-1,1)
@@ -113,19 +123,20 @@ class Hits:
             pos_pxpypz_calo = pos_pxpypz
             p = p_hits.view(-1,1)
     
-        if not args.ILD:
-            if len(output["X_track"])>0:
-                chi_tracks = X_track[:,15]/ X_track[:,16]
-                chi_squared_tracks = torch.cat((p_hits, chi_tracks), dim=0)
-            else:
-                chi_squared_tracks = p_hits
-            hit_type_one_hot = torch.nn.functional.one_hot(
-                hit_type_feature, num_classes=5
-            )
+   
+        if len(output["X_track"])>0:
+            chi_tracks = X_track[:,15]/ X_track[:,16]
+            chi_squared_tracks = torch.cat((p_hits, chi_tracks), dim=0)
         else:
-            chi_squared_tracks=None
+            chi_squared_tracks = p_hits
+        
+        if args.ILD:
             hit_type_one_hot = torch.nn.functional.one_hot(
                 hit_type_feature, num_classes=6
+            )
+        else:
+            hit_type_one_hot = torch.nn.functional.one_hot(
+                hit_type_feature, num_classes=5
             )
         return cls(
             pos_xyz_hits=pos_xyz_hits,
@@ -138,7 +149,9 @@ class Hits:
             hit_type_feature=hit_type_feature,
             chi_squared_tracks=chi_squared_tracks,
             hit_type_one_hot = hit_type_one_hot, 
-            time_v = time_v
+            time_v = time_v, 
+            # collectionID = collectionID_ht, 
+            # index = index_ht
             # hit_particle_link_calomother = hit_particle_link_calomother
         )
 

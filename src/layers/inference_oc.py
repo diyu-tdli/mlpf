@@ -19,6 +19,57 @@ import string
 import hdbscan
 import time
 import densitypeakclustering as dc
+from src.utils.pid_conversion import pid_conversion_dict as _PID_CONV_DICT
+
+
+def _fix_labels_for_classes(labels_hdb, graph, part_true, class_ids_to_fix, device):
+    """Replace predicted cluster labels for hits that truly belong to the specified
+    4-class IDs with oracle labels (true_particle_number + offset), so the energy
+    correction is run on correctly grouped hits for those classes.
+    Labels are always remapped to contiguous 0..N at the end.
+
+    Args:
+        labels_hdb:       (N_hits,) predicted cluster IDs (0 = noise/unassigned)
+        graph:            DGL graph; ndata["particle_number"] = true MC particle index
+        part_true:        Particles_GT; .pid = true PDG IDs (N_true_particles,)
+        class_ids_to_fix: list of 4-class integers to fix (1=CH, 2=NH, 3=photon)
+        device:           torch device
+    Returns:
+        labels_out: (N_hits,) contiguous 0..N with oracle labels injected for target-class hits
+    """
+    particle_numbers = graph.ndata["particle_number"].long().to(device)  # (N_hits,)
+    pid_per_particle = part_true.pid.to(device)                          # (N_true,)
+
+    # Map each true particle's PDG → 4-class (-1 for unknown)
+    pid_np = pid_per_particle.cpu().numpy()
+    cls_per_particle = torch.tensor(
+        [_PID_CONV_DICT.get(int(abs(float(p))), -1) for p in pid_np],
+        dtype=torch.long, device=device,
+    )  # (N_true,)
+
+    nonzero_mask = particle_numbers > 0  # exclude noise hits
+
+    # Look up 4-class for each hit via its true particle index
+    cls_per_hit = torch.full((len(particle_numbers),), -1, dtype=torch.long, device=device)
+    valid_idx = (particle_numbers[nonzero_mask] - 1).clamp(0, len(cls_per_particle) - 1)
+    cls_per_hit[nonzero_mask] = cls_per_particle[valid_idx]
+
+    # Build mask for target-class hits
+    target_mask = torch.zeros(len(particle_numbers), dtype=torch.bool, device=device)
+    for cls_id in class_ids_to_fix:
+        target_mask |= (cls_per_hit == cls_id)
+
+    labels_out = labels_hdb.clone()
+    if target_mask.any():
+        offset = int(labels_hdb.max().item()) + 1
+        labels_out[target_mask] = particle_numbers[target_mask] + offset
+
+    # Remap to contiguous 0..N so scatter operations stay compact.
+    # torch.unique returns sorted unique values; since 0 (noise) is the smallest
+    # it maps to index 0, preserving the noise convention.
+    _, labels_out = torch.unique(labels_out, return_inverse=True)
+
+    return labels_out
 def local_density_energy(D, d_c,energies,  normalize=False):
     """
     Computes 'rho', the local density for each data point.
@@ -205,6 +256,7 @@ def create_and_store_graph_output(
     pred_pos=None,
     pred_ref_pt=None,
     use_gt_clusters=False,
+    fix_clusters_class=None,
     pids_neutral=None,
     pids_charged=None,
     pred_pid=None,
@@ -250,7 +302,7 @@ def create_and_store_graph_output(
         else:
             #labels_hdb = hfdb_obtain_labels(X, model_output.device)
             labels_hdb =DPC_custom_CLD(X, dic["graph"], model_output.device)
-            #labels_hdb = labels_clustering 
+            #labels_hdb = labels_clustering
             # betas = torch.sigmoid(dic["graph"].ndata["beta"])
             # labels_clustering = clustering_obtain_labels(
             #     X, betas.view(-1), model_output.device,  tbeta=0.7, td=0.3
@@ -263,6 +315,12 @@ def create_and_store_graph_output(
             #    raise Exception("!!!! Labels==0 !!!!")
             if not truth_tracks:
                 labels_hdb, labels_clusters_removed_tracks = remove_bad_tracks_from_cluster_v1(dic["graph"], labels_hdb)
+
+        # Oracle: replace predicted labels with true particle labels for specified classes
+        if fix_clusters_class:
+            labels_hdb = _fix_labels_for_classes(
+                labels_hdb, dic["graph"], dic["part_true"], fix_clusters_class, model_output.device
+            )
         if predict and pandora_available:
             labels_pandora = get_labels_pandora(tracks, dic, model_output.device)
             num_clusters_pandora = len(labels_pandora.unique())
@@ -306,7 +364,7 @@ def create_and_store_graph_output(
         # torch.save(
         #      dic,
         #      path_save
-        #       + "/merge_eval/"
+        #       + "/graphs/"
         #      + str(local_rank)
         # #      + "_"
         #      + str(step)

@@ -144,9 +144,10 @@ class NeutralPCA(torch.nn.Module):
 
 class AverageHitsP(torch.nn.Module):
     # Same layout of the module as the GNN one, but just computes the average of the hits. Try to compare this + ML clustering with Pandora
-    def __init__(self, ecal_only=False):
+    def __init__(self, ecal_only=False, ILD=False):
         super(AverageHitsP, self).__init__()
         self.ecal_only = ecal_only
+        self.ILD = ILD
     def predict(self, x_global_features, graphs_new=None, explain=False):
         """
         Forward, named 'predict' for compatibility reasons
@@ -177,7 +178,9 @@ class AverageHitsP(torch.nn.Module):
             mask_ecal_only = (mask_ecal_only > 0.05).int().bool().to(graphs_new.device)
             #mask_ecal_only=torch.zeros(len(mask_ecal_only)).bool().to(graphs_new.device)
         xyz_hits = graphs_new.ndata["h"][:, :3]
-        E_hits = graphs_new.ndata["h"][:, 8]
+        # ILD has an extra hit-type one-hot column, shifting the energy index from 8 to 9
+        # E_hits = graphs_new.ndata["h"][:, 8]  # non-ILD
+        E_hits = graphs_new.ndata["h"][:, 9] if self.ILD else graphs_new.ndata["h"][:, 8]
         if self.ecal_only:
             hcal_hits = graphs_new.ndata["h"][:, 6] > 0
             E_hits[mask_ecal_only & (hcal_hits)] = 0
@@ -197,7 +200,7 @@ class PickPAtDCA(torch.nn.Module):
     def __init__(self):
         super(PickPAtDCA, self).__init__()
 
-    def predict(self, x_global_features, graphs_new=None, explain=False):
+    def predict(self, x_global_features, graphs_new=None, explain=False, ILD=False):
         """
         Forward, named 'predict' for compatibility reasons
         :param x_global_features: Global features of the graphs - to be concatenated to each node feature
@@ -232,7 +235,10 @@ class PickPAtDCA(torch.nn.Module):
         )
         # Barycenters of clusters of hits
         xyz_hits = graphs_new.ndata["h"][:, :3]
-        E_hits = graphs_new.ndata["h"][:, 8]
+        if ILD:
+            E_hits = graphs_new.ndata["h"][:, 9]
+        else:
+            E_hits = graphs_new.ndata["h"][:, 8]
         weighted_avg_hits = scatter_sum(xyz_hits * E_hits.unsqueeze(1), batch_idx, dim=0)
         E_total = scatter_sum(E_hits, batch_idx, dim=0)
         barycenters = weighted_avg_hits / E_total.unsqueeze(1)
@@ -245,9 +251,9 @@ class PickPAtDCA(torch.nn.Module):
 class ECNetWrapperAvg(torch.nn.Module):
     # use the GNN+NN model for energy correction
     # This one concatenates GNN features to the global features
-    def __init__(self):
+    def __init__(self, ILD=False):
         super(ECNetWrapperAvg, self).__init__()
-        self.AvgHits = AverageHitsP(ecal_only=True)
+        self.AvgHits = AverageHitsP(ecal_only=True, ILD=ILD)
 
     def predict(self, x_global_features, graphs_new=None, explain=False):
         """

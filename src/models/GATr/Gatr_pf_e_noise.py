@@ -1,7 +1,7 @@
 from os import path
 import sys
 # sys.path.append(path.abspath("/mnt/proj3/dd-23-91/cern/geometric-algebra-transformer/"))
-from time import time
+import time 
 from gatr import GATr, SelfAttentionConfig, MLPConfig
 from gatr.interface import embed_point, extract_scalar, extract_point, embed_scalar
 import torch
@@ -72,7 +72,15 @@ class ExampleWrapper(L.LightningModule):
         else:
             self.pids_neutral = []
             self.pids_charged = []
+        self._fix_clusters_class = []
+        if getattr(self.args, 'fix_ch', False):
+            self._fix_clusters_class.append(1)
+        if getattr(self.args, 'fix_neutrals', False):
+            self._fix_clusters_class.append(2)
+        if getattr(self.args, 'fix_photons', False):
+            self._fix_clusters_class.append(3)
     def forward(self, g, y, step_count, eval="", return_train=False,use_gt_clusters=False):
+        tic =time.time()
         if not use_gt_clusters:
             inputs = g.ndata["pos_hits_xyz"].float()
             if self.trainer.is_global_zero and step_count % 500 == 0:
@@ -122,6 +130,8 @@ class ExampleWrapper(L.LightningModule):
             x = torch.cat((x_cluster_coord, beta.view(-1, 1)), dim=1)
             
             pred_energy_corr = torch.ones_like(beta.view(-1, 1)).flatten()
+            toc =time.time()
+            # print("model", toc-tic)
         else:
             x = torch.ones_like(g.ndata["h"][:,0:4])
         if self.args.correction:
@@ -149,29 +159,33 @@ class ExampleWrapper(L.LightningModule):
     def training_step(self, batch, batch_idx):
         y = batch[1]
         batch_g = batch[0]
+        use_gt = self.args.use_gt_clusters if self.args.correction else False
         if self.trainer.is_global_zero:
-            result = self(batch_g, y, batch_idx)
+            result = self(batch_g, y, batch_idx, use_gt_clusters=use_gt)
         else:
-            result = self(batch_g, y, 1)
+            result = self(batch_g, y, 1, use_gt_clusters=use_gt)
 
         model_output = result[0]
         e_cor = result[1]
-        (loss, losses,) = object_condensation_loss2(
-            batch_g,
-            model_output,
-            e_cor,
-            y,
-            clust_loss_only=True,
-            add_energy_loss=False,
-            calc_e_frac_loss=False,
-            q_min=self.args.qmin,
-            frac_clustering_loss=self.args.frac_cluster_loss,
-            attr_weight=self.args.L_attractive_weight,
-            repul_weight=self.args.L_repulsive_weight,
-            fill_loss_weight=self.args.fill_loss_weight,
-            use_average_cc_pos=self.args.use_average_cc_pos,
-            loss_type=self.args.losstype,
-        )
+        if not self.args.correction:
+            (loss, losses,) = object_condensation_loss2(
+                batch_g,
+                model_output,
+                e_cor,
+                y,
+                clust_loss_only=True,
+                add_energy_loss=False,
+                calc_e_frac_loss=False,
+                q_min=self.args.qmin,
+                frac_clustering_loss=self.args.frac_cluster_loss,
+                attr_weight=self.args.L_attractive_weight,
+                repul_weight=self.args.L_repulsive_weight,
+                fill_loss_weight=self.args.fill_loss_weight,
+                use_average_cc_pos=self.args.use_average_cc_pos,
+                loss_type=self.args.losstype,
+            )
+        else:
+            losses = {}
         if self.args.correction:
             self.energy_correction.global_step = self.global_step
             if self.current_epoch  ==0:
@@ -185,7 +199,7 @@ class ExampleWrapper(L.LightningModule):
             
         else:
             loss_score = 0
-        if self.trainer.is_global_zero:
+        if self.trainer.is_global_zero and not self.args.correction:
             log_losses_wandb(True, batch_idx, 0, losses, loss, loss_score)
         self.loss_final = loss.item() + self.loss_final
         self.number_b = self.number_b + 1
@@ -202,7 +216,9 @@ class ExampleWrapper(L.LightningModule):
         batch_g = batch[0]
         shap_vals, ec_x = None, None
         if self.args.correction:
-            result = self(batch_g, y, 1, self.args.use_gt_clusters)
+            tic =time.time()
+            result = self(batch_g, y, 1, use_gt_clusters=self.args.use_gt_clusters)
+            toc = time.time()
             model_output = result[0]
             outputs = self.energy_correction.get_validation_step_outputs(batch_g, y, result)
             e_cor1, pred_pos, pred_ref_pt, pred_pid, num_fakes, extra_features, fakes_labels = outputs
@@ -278,11 +294,12 @@ class ExampleWrapper(L.LightningModule):
                 pred_ref_pt=pred_ref_pt,
                 pred_pid=pred_pid,
                 use_gt_clusters=self.args.use_gt_clusters,
+                fix_clusters_class=self._fix_clusters_class,
                 pids_neutral=self.pids_neutral,
                 pids_charged=self.pids_charged,
                 number_of_fakes=num_fakes,
                 extra_features=extra_features,
-                fakes_labels=fakes_labels, 
+                fakes_labels=fakes_labels,
                 pandora_available=self.args.pandora,
                 truth_tracks=self.args.truth_tracking
             )

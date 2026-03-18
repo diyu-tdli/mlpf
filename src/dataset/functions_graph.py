@@ -34,6 +34,50 @@ def create_inputs_from_table(
 
 
 
+def compute_tangents(pos, weights=None, k=10):
+    """Estimate tangent direction at each node via energy-weighted KNN + PCA,
+    oriented outward from the origin.
+
+    Args:
+        pos     (Tensor): [N, 3] node positions.
+        weights (Tensor): [N] per-node energy weights (None = uniform).
+        k       (int):   number of nearest neighbours.
+
+    Returns:
+        Tensor: [N, 3] tangent vectors directed outward from the origin.
+    """
+    N = pos.shape[0]
+    k_actual = min(k, N - 1)
+
+    knn_g = dgl.knn_graph(pos, k_actual + 1)
+    knn_g = dgl.remove_self_loop(knn_g)
+    src, dst = knn_g.edges()                    # src=center, dst=neighbour
+
+    rel_pos = pos[dst] - pos[src]               # [E, 3]
+
+    # Energy weight at each neighbour (uniform if not provided)
+    if weights is not None:
+        w = weights[dst].view(-1, 1, 1)         # [E, 1, 1]
+    else:
+        w = torch.ones(rel_pos.shape[0], 1, 1, device=pos.device, dtype=pos.dtype)
+
+    outer = (w * rel_pos.unsqueeze(-1) * rel_pos.unsqueeze(-2)).reshape(-1, 9)  # [E, 9]
+
+    cov = torch.zeros(N, 9, device=pos.device, dtype=pos.dtype)
+    cov.scatter_add_(0, src.unsqueeze(1).expand(-1, 9), outer)
+    cov = cov.view(N, 3, 3)
+
+    _, vecs = torch.linalg.eigh(cov)            # ascending eigenvalues
+    tangents = vecs[:, :, -1].clone()           # [N, 3] principal direction
+
+    # Orient outward: flip if dot product with radial direction is negative
+    radial = pos / (torch.norm(pos, dim=1, keepdim=True) + 1e-8)
+    flip = (tangents * radial).sum(dim=1) < 0
+    tangents[flip] *= -1
+
+    return tangents
+
+
 def create_graph(
     output,
     for_training =True, args=None
@@ -61,14 +105,16 @@ def create_graph(
             ).float()  
         g.ndata["p_hits"] = hits.p_hits.float() 
         g.ndata["pos_hits_xyz"] = hits.pos_xyz_hits.float()
+        # g.ndata["tangents"] = compute_tangents(hits.pos_xyz_hits.float(), weights=hits.e_hits.float().view(-1))
         g.ndata["pos_pxpypz_at_vertex"] = hits.pos_pxpypz.float()
         g.ndata["pos_pxpypz"] = hits.pos_pxpypz  #TrackState::AtIP
         g.ndata["pos_pxpypz_at_calo"] = hits.pos_pxpypz_calo  #TrackState::AtCalorimeter
         g = calculate_distance_to_boundary(g)
         g.ndata["hit_type"] = hits.hit_type_feature.float()
         g.ndata["e_hits"] = hits.e_hits.float()  
-        if not args.ILD:
-            g.ndata["chi_squared_tracks"] = hits.chi_squared_tracks.float()
+        # g.ndata["index"] = hits.index.float() 
+        # g.ndata["collectionID"] = hits.collectionID.float()  
+        g.ndata["chi_squared_tracks"] = hits.chi_squared_tracks.float()
         g.ndata["particle_number"] = hits.hit_particle_link.float()+1 #(noise idx is 0 and particle MC 0 starts at 1)
         # g.ndata["particle_number_calomother"] = hits.hit_particle_link_calomother.float()+1 #(noise idx is 0 and particle MC 0 starts at 1)
         if args.ILD:
