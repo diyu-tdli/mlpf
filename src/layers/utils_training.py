@@ -10,6 +10,7 @@ from src.layers.inference_oc import hfdb_obtain_labels, clustering_obtain_labels
 from src.layers.inference_oc import match_showers
 import torch_cmspepr
 from src.layers.inference_oc import remove_bad_tracks_from_cluster_v1
+from src.layers.inference_oc import make_cluster_labels_dense
 from src.layers.inference_oc import _fix_labels_for_classes
 class FreezeClustering(BaseFinetuning):
     def __init__(
@@ -110,6 +111,7 @@ def obtain_clustering_for_matched_showers(
             labels = _fix_labels_for_classes(
                 labels, dic["graph"], dic["part_true"], fix_clusters_class, model_output.device
             )
+        labels = make_cluster_labels_dense(labels)
         particle_ids = torch.unique(dic["graph"].ndata["particle_number"])
         shower_p_unique = torch.unique(labels)
         shower_p_unique, row_ind, col_ind, i_m_w, _ = match_showers(

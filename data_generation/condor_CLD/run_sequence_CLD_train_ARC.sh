@@ -6,6 +6,7 @@
 CLDGEO="CLD_o2_v06"
 GENTRACKING=false
 ARC=false
+PANDORA=false
 DATASET=false
 
 ########################################
@@ -25,6 +26,7 @@ while [[ $# -gt 0 ]]; do
         --pathcldconfig)  PATHCLDCONFIG="$2"; shift 2 ;;
         --gentracking)    GENTRACKING=true; shift ;;
         --arc)            ARC=true; shift ;;
+        --pandora)        PANDORA=true; shift ;;
         --dataset)        DATASET=true; shift ;;
         *) echo "Unknown option $1"; exit 1 ;;
     esac
@@ -155,6 +157,10 @@ if [ ! -f "out_reco_edm4hep_REC.parquet" ]; then
         DATA_CMD+=(--truth)
     fi
 
+    if $PANDORA; then
+        DATA_CMD+=(--pandora)
+    fi
+
     if $DATASET; then
         DATA_CMD+=(--dataset)
     fi
@@ -189,6 +195,10 @@ if $ARC; then
 
     if $GENTRACKING; then
         ARC_DATA_CMD+=(--truth)
+    fi
+
+    if $PANDORA; then
+        ARC_DATA_CMD+=(--pandora)
     fi
 
     if $DATASET; then

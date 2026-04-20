@@ -1,0 +1,23 @@
+universe              = vanilla
+executable            = /eos/user/v/vriecher/mlpf_arc/mlpf/notebooks/run_compare_arc_geometries_ratio.sh
+
+# Optional per submit überschreiben:
+# WORKERS=3 MAX_EVENTS_PER_FILE=5000 LOG_EVERY=1000 condor_submit submit_compare_arc_geometries_ratio.sub
+environment           = "WORKERS=$(WORKERS) MAX_EVENTS_PER_FILE=$(MAX_EVENTS_PER_FILE) LOG_EVERY=$(LOG_EVERY) MAX_FILES=$(MAX_FILES) DPI=$(DPI)"
+
+output                = /eos/user/v/vriecher/mlpf_arc/mlpf/notebooks/logs/compare_arc_ratio.$(ClusterId).$(ProcId).out
+error                 = /eos/user/v/vriecher/mlpf_arc/mlpf/notebooks/logs/compare_arc_ratio.$(ClusterId).$(ProcId).err
+log                   = /eos/user/v/vriecher/mlpf_arc/mlpf/notebooks/logs/compare_arc_ratio.$(ClusterId).log
+
+request_cpus          = 3
+request_memory        = 8 GB
+request_disk          = 4 GB
+
+# Defaults if not passed via command line
+WORKERS               = 3
+MAX_EVENTS_PER_FILE   = 5000
+LOG_EVERY             = 1000
+MAX_FILES             =
+DPI                   = 140
+
+queue

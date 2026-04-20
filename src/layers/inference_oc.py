@@ -167,6 +167,18 @@ def DPC(X, device):
     labels = torch.Tensor(core_ids)+1
     return labels.long().to(device)
 
+def make_cluster_labels_dense(labels):
+    labels = labels.long()
+    dense_labels = torch.zeros_like(labels)
+    next_label = 1
+    for label in torch.unique(labels):
+        if label.item() == 0:
+            dense_labels[labels == label] = 0
+            continue
+        dense_labels[labels == label] = next_label
+        next_label += 1
+    return dense_labels
+
 def remove_bad_tracks_from_cluster_v1(g, labels_hdb):
     mask_hit_type_t1 = g.ndata["hit_type"]==2
     mask_hit_type_t2 = g.ndata["hit_type"]==1
@@ -321,8 +333,10 @@ def create_and_store_graph_output(
             labels_hdb = _fix_labels_for_classes(
                 labels_hdb, dic["graph"], dic["part_true"], fix_clusters_class, model_output.device
             )
+        labels_hdb = make_cluster_labels_dense(labels_hdb)
         if predict and pandora_available:
             labels_pandora = get_labels_pandora(tracks, dic, model_output.device)
+            labels_pandora = make_cluster_labels_dense(labels_pandora)
             num_clusters_pandora = len(labels_pandora.unique())
         particle_ids = torch.unique(dic["graph"].ndata["particle_number"])
         
@@ -484,17 +498,6 @@ def store_at_batch_end(
     store=False,
     pandora_available=False
 ):
-    if predict:
-        path_save_ = (
-            path_save
-            + str(local_rank)
-            + "_"
-            + str(step)
-            + "_"
-            + str(epoch)
-            + ".pt"
-        )
-       
     path_save_ = (
         path_save
         + str(local_rank)
@@ -505,6 +508,7 @@ def store_at_batch_end(
         + ".pt"
     )
     if store and predict:
+        os.makedirs(os.path.dirname(path_save_), exist_ok=True)
         df_batch1.to_pickle(path_save_)
     if predict and pandora_available:
         path_save_pandora = (
@@ -1117,8 +1121,12 @@ def obtain_intersection_matrix(shower_p_unique, particle_ids, labels, dic, e_hit
         h_hits = e_hits.clone()
         counts[mask_p] = 1
         h_hits[~mask_p] = 0
-        intersection_matrix[:, index] = scatter_add(counts, labels)
-        intersection_matrix_w[:, index] = scatter_add(h_hits, labels.to(h_hits.device))
+        intersection_matrix[:, index] = scatter_add(
+            counts, labels, dim=0, dim_size=len_pred_showers
+        )
+        intersection_matrix_w[:, index] = scatter_add(
+            h_hits, labels.to(h_hits.device), dim=0, dim_size=len_pred_showers
+        )
     return intersection_matrix, intersection_matrix_w
 
 
@@ -1130,7 +1138,7 @@ def obtain_union_matrix(shower_p_unique, particle_ids, labels, dic):
         counts = torch.zeros_like(labels)
         mask_p = dic["graph"].ndata["particle_number"] == id
         for index_pred, id_pred in enumerate(shower_p_unique):
-            mask_pred_p = labels == id_pred
+            mask_pred_p = labels == index_pred
             mask_union = mask_pred_p + mask_p
             union_matrix[index_pred, index] = torch.sum(mask_union)
 
@@ -1240,13 +1248,16 @@ def match_showers(
             ),
             dim=0,
         )
+    dense_labels = torch.zeros_like(labels, dtype=torch.long)
+    for dense_idx, pred_label in enumerate(shower_p_unique):
+        dense_labels[labels == pred_label] = dense_idx
     e_hits = dic["graph"].ndata["e_hits"].view(-1)
     i_m, i_m_w = obtain_intersection_matrix(
-        shower_p_unique, particle_ids, labels, dic, e_hits
+        shower_p_unique, particle_ids, dense_labels, dic, e_hits
     )
     i_m = i_m.to(model_output.device)
     i_m_w = i_m_w.to(model_output.device)
-    u_m = obtain_union_matrix(shower_p_unique, particle_ids, labels, dic)
+    u_m = obtain_union_matrix(shower_p_unique, particle_ids, dense_labels, dic)
     u_m = u_m.to(model_output.device)
     iou_matrix = i_m / u_m
     if torch.sum(particle_ids == 0) > 0:

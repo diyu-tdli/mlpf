@@ -170,16 +170,17 @@ class EnergyCorrectionWrapper(torch.nn.Module):
                 explain=self.args.explain_ec,
             )
         else:
+            empty_tensor = torch.tensor([]).to(graphs_new.ndata["h"].device)
             if not self.args.regress_pos:
-                charged_energies = torch.tensor([]).to(graphs_new.ndata["h"].device)
+                charged_energies = empty_tensor
             else:
                 charged_energies = [
-                    torch.tensor([]).to(graphs_new.ndata["h"].device),
-                    torch.tensor([]).to(graphs_new.ndata["h"].device),
-                    torch.tensor([]).to(graphs_new.ndata["h"].device),
+                    empty_tensor,
+                    empty_tensor,
+                    empty_tensor,
                 ]
             if self.pid_channels:
-                charged_energies += [torch.tensor([]).to(graphs_new.ndata["h"].device)]
+                charged_energies += [empty_tensor, empty_tensor]
         
         return charged_energies
 
@@ -198,16 +199,18 @@ class EnergyCorrectionWrapper(torch.nn.Module):
                 explain=self.args.explain_ec,
             )[1]
         else:
+            empty_tensor = torch.tensor([]).to(graphs_new.ndata["h"].device)
             if not self.args.regress_pos:
-                neutral_energies = torch.tensor([]).to(graphs_new.ndata["h"].device)
+                neutral_energies = empty_tensor
             else:
                 neutral_energies = [
-                    torch.tensor([]).to(graphs_new.ndata["h"].device),
-                    torch.tensor([]).to(graphs_new.ndata["h"].device),
-                    torch.tensor([]).to(graphs_new.ndata["h"].device),
-                        ]
+                    empty_tensor,
+                    empty_tensor,
+                    empty_tensor,
+                ]
             if self.pid_channels:
-                neutral_energies += [ torch.tensor([]).to(graphs_new.ndata["h"].device) ]
+                neutral_energies += [empty_tensor, empty_tensor]
+            neutral_pxyz_avg = empty_tensor
         return neutral_energies, neutral_pxyz_avg
     def predict(self, x_global_features, graphs_new=None, explain=False):
         """
@@ -617,14 +620,20 @@ class EnergyCorrection():
 
         if len(self.pids_charged):
             if len(charged_idx):
-                charged_PID_pred1 = np.array(self.pids_charged)[np.argmax(charged_PID_pred.cpu().detach(), axis=1)]  #0,1,2
+                charged_PID_pred_for_labels = charged_PID_pred.detach().cpu()
+                if charged_PID_pred_for_labels.ndim == 1:
+                    charged_PID_pred_for_labels = charged_PID_pred_for_labels.reshape(1, -1)
+                charged_PID_pred1 = np.array(self.pids_charged)[np.argmax(charged_PID_pred_for_labels, axis=1)]  #0,1,2
             else:
                 charged_PID_pred1 = []
             pred_pid[charged_idx.flatten()] = torch.tensor(charged_PID_pred1).long().to(charged_idx.device)
 
         if len(self.pids_neutral):
             if len(neutral_idx):
-                neutral_PID_pred1 = np.array(self.pids_neutral)[np.argmax(neutral_PID_pred.cpu().detach(), axis=1)] #0,1
+                neutral_PID_pred_for_labels = neutral_PID_pred.detach().cpu()
+                if neutral_PID_pred_for_labels.ndim == 1:
+                    neutral_PID_pred_for_labels = neutral_PID_pred_for_labels.reshape(1, -1)
+                neutral_PID_pred1 = np.array(self.pids_neutral)[np.argmax(neutral_PID_pred_for_labels, axis=1)] #0,1
             else:
                 neutral_PID_pred1 = []
             pred_pid[neutral_idx.flatten()] = torch.tensor(neutral_PID_pred1).long().to(neutral_idx.device)
@@ -807,18 +816,28 @@ class EnergyCorrection():
             e_cor, pred_pos, pred_ref_pt, extra_features, fakes_labels, charged_PID_pred, neutral_PID_pred = e_cor["pred_energy_corr"], e_cor["pred_pos"], e_cor[
                 "pred_ref_pt"], e_cor["extra_features"], e_cor["fakes_labels"], e_cor["charged_PID_pred"], e_cor["neutral_PID_pred"]
             max_len = max(len(self.pids_charged), len(self.pids_neutral))
+            charged_PID_pred_cpu = charged_PID_pred.detach().cpu()
+            neutral_PID_pred_cpu = neutral_PID_pred.detach().cpu()
+            if charged_PID_pred_cpu.ndim == 1:
+                charged_PID_pred_cpu = charged_PID_pred_cpu.reshape(1, -1)
+            if neutral_PID_pred_cpu.ndim == 1:
+                neutral_PID_pred_cpu = neutral_PID_pred_cpu.reshape(1, -1)
             if self.args.restrict_PID_charge:
                 PID_logits = torch.zeros(len(e_cor), len(self.pids_charged)+ len(self.pids_neutral)).float()
                 PID_logits = PID_logits.clone()
-                PID_logits[charged_idx.cpu(),0] = charged_PID_pred.detach().cpu()[:,0]
-                PID_logits[charged_idx.cpu(),1] = charged_PID_pred.detach().cpu()[:,1]
-                PID_logits[charged_idx.cpu(),4] = charged_PID_pred.detach().cpu()[:,2]
-                PID_logits[neutral_idx.cpu(),2] = neutral_PID_pred.detach().cpu()[:,0]
-                PID_logits[neutral_idx.cpu(),3] = neutral_PID_pred.detach().cpu()[:,1]
+                charged_idx_cpu = charged_idx.cpu()
+                neutral_idx_cpu = neutral_idx.cpu()
+                if len(charged_idx_cpu) and charged_PID_pred_cpu.shape[1] >= 3:
+                    PID_logits[charged_idx_cpu,0] = charged_PID_pred_cpu[: len(charged_idx_cpu), 0]
+                    PID_logits[charged_idx_cpu,1] = charged_PID_pred_cpu[: len(charged_idx_cpu), 1]
+                    PID_logits[charged_idx_cpu,4] = charged_PID_pred_cpu[: len(charged_idx_cpu), 2]
+                if len(neutral_idx_cpu) and neutral_PID_pred_cpu.shape[1] >= 2:
+                    PID_logits[neutral_idx_cpu,2] = neutral_PID_pred_cpu[: len(neutral_idx_cpu), 0]
+                    PID_logits[neutral_idx_cpu,3] = neutral_PID_pred_cpu[: len(neutral_idx_cpu), 1]
             else:
                 PID_logits = torch.zeros(len(e_cor), max_len).float()
-                PID_logits[charged_idx.cpu()] = charged_PID_pred.detach().cpu()
-                PID_logits[neutral_idx.cpu()] = neutral_PID_pred.detach().cpu()
+                PID_logits[charged_idx.cpu()] = charged_PID_pred_cpu
+                PID_logits[neutral_idx.cpu()] = neutral_PID_pred_cpu
 
             extra_features = extra_features.detach().cpu()
             extra_features = torch.cat((extra_features, PID_logits), dim=1).numpy()

@@ -195,6 +195,8 @@ def parse_args():
     parser.add_argument("--ALLEGRO", action="store_true", default=False, help="use ALLEGRO data")
     parser.add_argument("--chunk_size", type=int, default=100, help="Events per output file")
     args = parser.parse_args()
+    if args.pandora:
+        args.dataset = True
     return args
 
 
@@ -211,4 +213,3 @@ def process(args):
 if __name__ == "__main__":
     args = parse_args()
     process(args)
-

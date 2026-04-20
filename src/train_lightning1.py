@@ -43,19 +43,22 @@ def setup_wandb(args):
 def build_trainer(args, gpus, logger, training=True):
     callbacks = get_callbacks(args) if training else get_callbacks_eval(args)
 
-    strategy = "auto" if args.correction else "ddp" if training else None
+    strategy = "ddp_find_unused_parameters_true" if (training and args.correction) else "ddp" if training else None
 
-    return L.Trainer(
+    trainer_kwargs = dict(
         callbacks=callbacks,
         accelerator="gpu",
         devices=gpus,
         default_root_dir=args.model_prefix,
         logger=logger,
         max_epochs=args.num_epochs if training else None,
-        strategy=strategy,
         limit_train_batches=args.train_batches if training else None,
         limit_val_batches=5 if training else None,
     )
+    if strategy is not None:
+        trainer_kwargs["strategy"] = strategy
+
+    return L.Trainer(**trainer_kwargs)
 
 
 # ----------------------------------------------------------------------
@@ -64,7 +67,7 @@ def build_trainer(args, gpus, logger, training=True):
 
 def main():
     args = parser.parse_args()
-    torch.autograd.set_detect_anomaly(True)
+    torch.autograd.set_detect_anomaly(False)
 
     training_mode = not args.predict
     args.local_rank = 0
